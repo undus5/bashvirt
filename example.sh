@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # _vmdir is required, to store all the runtime files
-# e.g. _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
+#_vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 _vmdir=path/to/vm_runtime_dir
 
 # disk image file, default is ${_vmdir}/disk.qcow2
@@ -9,7 +9,7 @@ _vmdir=path/to/vm_runtime_dir
 #_disk_file=${_vmdir}/disk.qcow2
 
 # cpu cores, default is 2
-# check cpu cores with command `lscpu`, or `cat /etc/proc/cpuinfo`
+# check cpu cores with command `lscpu`, or `cat /proc/cpuinfo`
 #_cpu_cores=4
 
 # memory, default is 2G

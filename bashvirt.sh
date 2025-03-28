@@ -101,7 +101,7 @@ kill_swtpm() {
 #################################################################################
 
 if [[ -n ${_boot_iso} ]]; then
-    [[ ! -f ${_boot_iso} ]] || printerr "file not found: ${_boot_iso}\n"
+    [[ -f ${_boot_iso} ]] || printerr "file not found: ${_boot_iso}\n"
     _bootcd="\
         -drive file=${_boot_iso},media=cdrom,if=none,id=cd0 \
         -device ide-cd,drive=cd0,bootindex=0"
@@ -155,8 +155,14 @@ case "${_nic_mode}" in
         _nic_devices="-nic user,model=${_nic_model},mac=$(gen_mac_addr 0)"
         ;;
     br0br1)
-        ip link show | grep -E 'br0|br1' &>/dev/null || \
-            printerr "network bridge not found: br0 or br1"
+        ip link show | grep br0 &>/dev/null || \
+            printerr "network bridge not found: br0\n"
+        ip link show | grep br1 &>/dev/null || \
+            printerr "network bridge not found: br1\n"
+        grep -q 'allow br0' /etc/qemu/bridge.conf || \
+            printerr "br0 not found in /etc/qemu/bridge.conf \n"
+        grep -q 'allow br1' /etc/qemu/bridge.conf || \
+            printerr "br1 not found in /etc/qemu/bridge.conf \n"
         _nic_devices="\
             -nic bridge,br=br0,model=${_nic_model},mac=$(gen_mac_addr 0) \
             -nic bridge,br=br1,model=${_nic_model},mac=$(gen_mac_addr 1)"
