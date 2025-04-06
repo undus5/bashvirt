@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# exit on error
-set -e
-
 printerr() {
     printf "${@}" >&2; exit 1
 }
@@ -211,10 +208,9 @@ qemu_err_fallback() {
 }
 
 qemu_running_check() {
-    if [[ -f ${_qemu_pid} ]]; then
-        _proc_comm=$(cat ${_qemu_pid} | xargs -I{} ps -o command= -p {})
-        [[ "${_proc_comm}" =~ "qemu-system-x86_64" ]] && printerr "vm already running\n"
-    fi
+    [[ -f ${_qemu_pid} ]] || return 0
+    _proc_comm=$(cat ${_qemu_pid} | xargs -I{} ps -o command= -p {})
+    [[ "${_proc_comm}" =~ "qemu-system-x86_64" ]] && printerr "vm already running\n"
 }
 
 qemu_start() {
