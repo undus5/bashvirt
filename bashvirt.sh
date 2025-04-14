@@ -40,8 +40,8 @@ _disk_devices="\
 
 qemu_disk_check() {
     if [[ ! -f ${_disk_file} ]]; then
-        printf "file not found: $(basename ${_disk_file})\n"
-        printerr "create via: \`qemu-img create -f qcow2 $(basename ${_disk_file}) -o nocow=on 40G\`\n"
+        printf "file not found: $(basename ${_disk_file}), create with:\n"
+        printerr "  qemu-img create -f qcow2 $(basename ${_disk_file}) -o nocow=on 40G\n"
     fi
 }
 
@@ -54,8 +54,6 @@ if [[ -n ${_boot_iso} ]]; then
     _bootcd="\
         -drive file=${_boot_iso},media=cdrom,if=none,id=cd0 \
         -device ide-cd,drive=cd0,bootindex=0"
-    [[ "${_disk_drive}" == "sata" ]] && \
-        _bootcd="${_bootcd},bus=ahci0.1"
 fi
 
 
@@ -68,10 +66,7 @@ fi
 if [[ "${_boot_mode}" == "uefi" ]]; then
     _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
     _ovmf_var=${_vmdir}/OVMF_VARS.4m.fd
-    if [[ ! -f ${_ovmf_var} ]]; then
-        printf "file not found: $(basename ${_ovmf_var})\n"
-        printerr "copy from: /usr/share/edk2/x64/OVMF_VARS.4m.fd\n"
-    fi
+    [[ -f ${_ovmf_var} ]] || cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "${_vmdir}"
     _uefi_drives="\
         -drive if=pflash,format=raw,readonly=on,file=${_ovmf_ro} \
         -drive if=pflash,format=raw,file=${_ovmf_var}"
@@ -261,7 +256,7 @@ usb_list() {
 }
 
 #################################################################################
-# Script Options Dispatcher
+# Options Dispatcher
 #################################################################################
 
 print_help() {
