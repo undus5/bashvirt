@@ -37,7 +37,7 @@ _vmdir=path/to/vm_runtime_dir
 # graphic card, std or qxl or virtio, optional, default is std
 #_gpu_drive=virtio
 
-# disk drive [ide|virtio], default is ide
+# disk drive [sata|virtio], default is sata
 #_disk_drive=virtio
 
 source path/to/bashvirt.sh

@@ -17,23 +17,26 @@ _source_path=$(realpath ${BASH_SOURCE[0]})
 #################################################################################
 
 [[ -z "${_disk_file}" ]] && _disk_file=${_vmdir}/disk.qcow2
-[[ -z "${_disk_drive}" ]] && _disk_drive="ide"
+[[ -z "${_disk_drive}" ]] && _disk_drive="sata"
 
 case "${_disk_drive}" in
-    ide)
+    sata)
         _diskdev="ide-hd"
         ;;
     virtio)
         _diskdev="virtio-blk-pci"
         ;;
     *)
-        printerr "_disk_drive only support: <ide|virtio>\n"
+        printerr "_disk_drive only support: <sata|virtio>\n"
         ;;
 esac
 
-_disk_drives="\
+_disk_devices="\
     -drive file=${_disk_file},if=none,id=disk0 \
     -device ${_diskdev},drive=disk0,bootindex=1"
+
+[[ "${_disk_drive}" == "sata" ]] && \
+    _disk_devices="-device ahci,id=ahci0 ${_disk_devices},bus=ahci0.0"
 
 qemu_disk_check() {
     if [[ ! -f ${_disk_file} ]]; then
@@ -41,6 +44,20 @@ qemu_disk_check() {
         printerr "create via: \`qemu-img create -f qcow2 $(basename ${_disk_file}) -o nocow=on 40G\`\n"
     fi
 }
+
+#################################################################################
+# BootCD
+#################################################################################
+
+if [[ -n ${_boot_iso} ]]; then
+    [[ -f ${_boot_iso} ]] || printerr "file not found: ${_boot_iso}\n"
+    _bootcd="\
+        -drive file=${_boot_iso},media=cdrom,if=none,id=cd0 \
+        -device ide-cd,drive=cd0,bootindex=0"
+fi
+
+[[ "${_disk_drive}" == "sata" ]] && \
+    _bootcd="${_bootcd},bus=ahci0.1"
 
 #################################################################################
 # BIOS / UEFI
@@ -92,17 +109,6 @@ kill_swtpm() {
         $(is_pid_swtpm $(cat ${_tpm_pid})) && \
         kill -9 $(cat ${_tpm_pid})
 }
-
-#################################################################################
-# BootCD
-#################################################################################
-
-if [[ -n ${_boot_iso} ]]; then
-    [[ -f ${_boot_iso} ]] || printerr "file not found: ${_boot_iso}\n"
-    _bootcd="\
-        -drive file=${_boot_iso},media=cdrom,if=none,id=cd0 \
-        -device ide-cd,drive=cd0,bootindex=0"
-fi
 
 #################################################################################
 # Graphic Card
@@ -191,7 +197,7 @@ _qemu_options="\
     -monitor unix:${_monitor_sock},server,nowait \
     -device qemu-xhci -pidfile ${_qemu_pid} \
     -display sdl,gl=on,full-screen=on ${_gpu_device} \
-    ${_uefi_drives} ${_tpm_devices} ${_disk_drives} ${_bootcd} ${_nic_devices}"
+    ${_uefi_drives} ${_tpm_devices} ${_disk_devices} ${_bootcd} ${_nic_devices}"
 
 #################################################################################
 # QEMU start
