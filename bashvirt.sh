@@ -54,10 +54,10 @@ if [[ -n ${_boot_iso} ]]; then
     _bootcd="\
         -drive file=${_boot_iso},media=cdrom,if=none,id=cd0 \
         -device ide-cd,drive=cd0,bootindex=0"
+    [[ "${_disk_drive}" == "sata" ]] && \
+        _bootcd="${_bootcd},bus=ahci0.1"
 fi
 
-[[ "${_disk_drive}" == "sata" ]] && \
-    _bootcd="${_bootcd},bus=ahci0.1"
 
 #################################################################################
 # BIOS / UEFI
