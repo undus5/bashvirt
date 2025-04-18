@@ -36,7 +36,7 @@ $ qemu-img create -f qcow2 disk.qcow2 -o nocow=on 40G
 documentation in the script:
 
 ```
-$ cp ~/bashvirt/example.sh ~/vms/win11/win11.sh
+$ cp ~/bashvirt/example.sh ~/vms/win11/run.sh
 ```
 
 4, assume you have already downloaded Windows 11 and VirtIO iso images to
@@ -47,7 +47,7 @@ $ cp ~/bashvirt/example.sh ~/vms/win11/win11.sh
 
 _vmdir=~/vms/win11
 
-_cpu_cores=4
+_cpus=4
 _memory=8G
 _boot_mode=uefi
 _tpm_on=yes
@@ -65,8 +65,8 @@ source ~/bashvirt/bashvirt.sh
 5, run the script to lanuch virtual machine and install operating system:
 
 ```
-$ chmod u+x win11.sh
-$ ./win11.sh
+$ chmod u+x ~/vms/win11/run.sh
+$ ~/vms/win11/run.sh
 ```
 
 if anything go wrong, it would generate a log file called `qemu_err.log`.

@@ -10,13 +10,16 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 #_second_iso=path/to/virtio.iso
 #_qemu_options_ext="${_qemu_options_ext} -drive file=${_second_iso},media=cdrom"
 
-# disk image file, default is ${_vmdir}/disk.qcow2
-# create via command `qemu-img create -f qcow2 disk.qcow2 -o nocow=on 40G`
-#_disk_file=${_vmdir}/disk.qcow2
+# shared folder between host and guest (virtiofs)
+#_shared_dir=path/to
 
-# cpu cores, default is 2
-# check cpu cores with command `lscpu`, or `cat /proc/cpuinfo`
-#_cpu_cores=4
+# enable if linux guest's uid/gid are not 1000 (virtiofs)
+#_guest_uid=1000
+#_guest_gid=1000
+
+# cpus, default is 2
+# check physical cpu info with command `lscpu`, or `cat /proc/cpuinfo`
+#_cpus=4
 
 # memory, default is 2G
 #_memory=4G
@@ -24,8 +27,8 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # boot mode [bios|uefi], default is bios
 #_boot_mode=uefi
 
-# enable tpm [yes|no], default is no
-#_tpm_on=yes
+# enable hyper-v enlightenments for windows guest
+#_hyperv=yes
 
 # disk drive [sata|virtio], default is sata
 #_disk_drive=virtio
@@ -39,5 +42,12 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # network cards mode, [user|br0br1], default is user
 #_nic_mode=br0br1
 
-source path/to/bashvirt.sh
+# disk image file, default is ${_vmdir}/disk.qcow2
+# create via command `qemu-img create -f qcow2 disk.qcow2 -o nocow=on 40G`
+#_disk_file=${_vmdir}/disk.qcow2
+
+# enable tpm [yes|no], default is no
+#_tpm_on=yes
+
+source path/to/bashvirt.sh "${@}"
 

@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+[[ -z "${_vmdir}" ]] && printf "_vmdir is undefined\n" >&2
+[[ -d "${_vmdir}" ]] || printf "dir not found: ${_vmdir}\n" >&2
+_vmname=$(basename "${_vmdir}")
+
 printerr() {
-    printf "${@}" >&2; exit 1
+    printf "${@}" > >(tee -a ${_vmdir}/qemu_err.log >&2) && exit 1
 }
 
 _caller_path=$(realpath $0)
@@ -9,8 +13,6 @@ _source_path=$(realpath ${BASH_SOURCE[0]})
 
 [[ "${_caller_path}" == "${_source_path}" ]] && \
     printerr "do not run this script directly, source it\n"
-
-[[ -z "${_vmdir}" ]] && printerr "_vmdir is undefined\n"
 
 #################################################################################
 # Disk Image
@@ -73,39 +75,6 @@ if [[ "${_boot_mode}" == "uefi" ]]; then
 fi
 
 #################################################################################
-# TPM
-#################################################################################
-
-_tpm_pid=${_vmdir}/swtpm.pid
-_tpm_sock=${_vmdir}/swtpm.sock
-
-if [[ "${_tpm_on}" == "yes" ]]; then
-    _tpm_devices="\
-        -chardev socket,id=chrtpm,path=${_tpm_sock} \
-        -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
-fi
-
-is_pid_swtpm() {
-    ps -o command= -p ${1} | grep -q swtpm
-}
-
-init_swtpm() {
-    command -v swtpm &>/dev/null || printerr "swtpm: command not found\n"
-    if [[ ! -f ${_tpm_pid} ]] || [[ ! $(is_pid_swtpm $(cat ${_tpm_pid})) ]]; then
-        swtpm socket --tpm2 \
-            --tpmstate dir=${_vmdir} \
-            --ctrl type=unixio,path=${_tpm_sock} \
-            --pid file=${_tpm_pid} &
-    fi
-}
-
-kill_swtpm() {
-    [[ -f ${_tpm_pid} ]] && \
-        $(is_pid_swtpm $(cat ${_tpm_pid})) && \
-        kill -9 $(cat ${_tpm_pid})
-}
-
-#################################################################################
 # Graphic Card
 #################################################################################
 
@@ -143,7 +112,7 @@ esac
 [[ -z "${_nic_mode}" ]] && _nic_mode="user"
 
 gen_mac_addr() {
-    printf "$(basename ${_vmdir})" | sha256sum |\
+    printf "${_vmname}" | sha256sum |\
         awk -v offset="$(( ${1} + 7 ))" '{ printf "52:54:%s:%s:%s:%s\n", \
         substr($1,1,2), substr($1,3,2), substr($1,5,2), substr($1,offset,2) }'
 }
@@ -171,13 +140,111 @@ case "${_nic_mode}" in
 esac
 
 #################################################################################
+# Hyper-V Enlightenment
+#################################################################################
+
+_cpu_model="host"
+if [[ -n "${_hyperv}" && "${_hyperv}" == "yes" ]]; then
+    _cpu_model="${_cpu_model},hv_relaxed,hv_vapic,hv_spinlocks=0xfff"
+    _cpu_model="${_cpu_model},hv_vpindex,hv_synic,hv_time,hv_stimer"
+    _cpu_model="${_cpu_model},hv_tlbflush,hv_tlbflush_ext,hv_ipi,hv_stimer_direct"
+    _cpu_model="${_cpu_model},hv_runtime,hv_frequencies,hv_reenlightenment"
+    _cpu_model="${_cpu_model},hv_avic,hv_xmm_input"
+fi
+
+#################################################################################
+# TPM
+#################################################################################
+
+_tpm_sock=${_vmdir}/swtpm.sock
+_tpm_pidf=${_tpm_sock}.pid
+_tpm_pid=$([[ -f ${_tpm_pidf} ]] && cat ${_tpm_pidf})
+
+if [[ "${_tpm_on}" == "yes" ]]; then
+    _tpm_devices="\
+        -chardev socket,id=chartpm,path=${_tpm_sock} \
+        -tpmdev emulator,id=tpm0,chardev=chartpm -device tpm-tis,tpmdev=tpm0"
+fi
+
+is_pid_swtpm() {
+    ps -o command= -p ${1} | grep -q swtpm
+}
+
+init_swtpm() {
+    command -v swtpm &>/dev/null || printerr "swtpm: command not found\n"
+    if [[ -z "${_tpm_pid}" ]] || [[ ! $(is_pid_swtpm "${_tpm_pid}") ]]; then
+        swtpm socket --tpm2 \
+            --tpmstate dir=${_vmdir} \
+            --ctrl type=unixio,path=${_tpm_sock} \
+            --pid file=${_tpm_pidf} &
+    fi
+}
+
+kill_swtpm() {
+    [[ -f ${_tpm_pidf} ]] && \
+        $(is_pid_swtpm $(cat ${_tpm_pidf})) && \
+        kill -9 $(cat ${_tpm_pidf})
+}
+
+#################################################################################
+# memory, virtiofsd
+#################################################################################
+
+[[ -z "${_memory}" ]] && _memory=2G
+[[ -z "${_guest_uid}" ]] && _guest_uid=1000
+[[ -z "${_guest_gid}" ]] && _guest_gid=1000
+
+_viofsd_exec=/usr/lib/virtiofsd
+_viofsd_sock=${_vmdir}/viofsd.sock
+_viofsd_pidf=${_viofsd_sock}.pid
+_viofsd_pid=$([[ -f ${_viofsd_pidf} ]] && cat ${_viofsd_pidf})
+
+
+[[ -n "${_shared_dir}" && -d "${_shared_dir}" && -f ${_viofsd_exec} ]] && \
+    _viofsd_devices="\
+        -object memory-backend-memfd,id=mem,size=${_memory},share=on \
+        -numa node,memdev=mem \
+        -chardev socket,id=charviofsd,path=${_viofsd_sock} \
+        -device vhost-user-fs-pci,chardev=charviofsd,tag=viofsd"
+
+is_pid_viofsd() {
+    ps -o command= -p ${1} | grep -q virtiofsd
+}
+
+init_viofsd() {
+    if [[ -n "${_shared_dir}" ]]; then
+        [[ -d "${_shared_dir}" ]] || printerr "dir not found: ${_shared_dir}\n"
+        [[ -f "${_viofsd_exec}" ]] || printerr "command not found: ${_viofsd_exec}\n"
+        if [[ -z "${_viofsd_pid}" ]] || [[ ! $(is_pid_viofsd "${_viofsd_pid}") ]]; then
+            _host_uid=$(id -u)
+            _host_gid=$(id -g)
+            ${_viofsd_exec} \
+            --socket-path ${_viofsd_sock} \
+            --shared-dir "${_shared_dir}" \
+            --sandbox namespace \
+            --translate-uid host:${_host_uid}:${_guest_uid}:1 \
+            --translate-gid host:${_host_gid}:${_guest_gid}:1 \
+            --translate-uid squash-guest:0:${_host_uid}:4294967295 \
+            --translate-gid squash-guest:0:${_host_gid}:4294967295 \
+            &
+        fi
+    fi
+}
+
+kill_viofsd() {
+    [[ -f ${_viofsd_pidf} ]] && \
+        $(is_pid_viofsd $(cat ${_viofsd_pidf})) && \
+        kill -9 $(cat ${_viofsd_pidf})
+}
+
+#################################################################################
 # QEMU Options builder
 #################################################################################
 
-[[ -z ${_memory} ]] && _memory=2G
 # check CPU cores with `lscpu` command, or `cat /etc/proc/cpuinfo`
-[[ -z ${_cpu_cores} ]] && _cpu_cores=2
-_qemu_pid=${_vmdir}/qemu.pid
+[[ -z "${_cpus}" ]] && _cpus=2
+
+_qemu_pidf=${_vmdir}/qemu.pid
 _monitor_sock=${_vmdir}/monitor.sock
 
 gen_mac_addr() {
@@ -187,10 +254,11 @@ gen_mac_addr() {
 }
 
 _qemu_options="\
-    -enable-kvm -cpu host -smp ${_cpu_cores} -m ${_memory} -machine q35 \
+    -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} \
+    -m ${_memory} ${_viofsd_devices} \
     -audiodev pa,id=snd0 -device ich9-intel-hda -device hda-duplex,audiodev=snd0 \
     -monitor unix:${_monitor_sock},server,nowait \
-    -device qemu-xhci -pidfile ${_qemu_pid} \
+    -device qemu-xhci -pidfile ${_qemu_pidf} \
     -display sdl,gl=on,full-screen=on ${_gpu_device} \
     ${_uefi_drives} ${_tpm_devices} ${_disk_devices} ${_bootcd} ${_nic_devices}"
 
@@ -198,19 +266,21 @@ _qemu_options="\
 # QEMU start
 #################################################################################
 
-qemu_prerequisite() {
+qemu_deps_prepare() {
     [[ "${_tpm_on}" == "yes" ]] && init_swtpm
+    init_viofsd
     return 0
 }
 
 qemu_err_fallback() {
     [[ "${_tpm_on}" == "yes" ]] && kill_swtpm
+    kill_viofsd
     return 0
 }
 
 qemu_running_check() {
-    [[ -f ${_qemu_pid} ]] || return 0
-    _proc_comm=$(cat ${_qemu_pid} | xargs -I{} ps -o command= -p {})
+    [[ -f ${_qemu_pidf} ]] || return 0
+    _proc_comm=$(cat ${_qemu_pidf} | xargs -I{} ps -o command= -p {})
     [[ "${_proc_comm}" =~ "qemu-system-x86_64" ]] && printerr "vm already running\n"
 }
 
@@ -218,8 +288,8 @@ qemu_start() {
     qemu_running_check
     qemu_disk_check
     trap 'qemu_err_fallback; exit 1' ERR
-    qemu_prerequisite
-    qemu-system-x86_64 ${_qemu_options} ${_qemu_options_ext} 2>>${_vmdir}/qemu_err.log
+    qemu_deps_prepare
+    qemu-system-x86_64 ${_qemu_options} ${_qemu_options_ext} 2> >(tee -a ${_vmdir}/qemu_err.log)
 }
 
 #################################################################################
