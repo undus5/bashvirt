@@ -18,8 +18,8 @@ _source_path=$(realpath ${BASH_SOURCE[0]})
 # Disk Image
 #################################################################################
 
-[[ -z "${_disk_file}" ]] && _disk_file=${_vmdir}/disk.qcow2
-[[ "${_disk_file##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
+[[ -z "${_disk_image}" ]] && _disk_image=${_vmdir}/disk.qcow2
+[[ "${_disk_image##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
 [[ -z "${_disk_drive}" ]] && _disk_drive="sata"
 
 case "${_disk_drive}" in
@@ -35,16 +35,16 @@ case "${_disk_drive}" in
 esac
 
 _disk_devices="\
-    -drive file=${_disk_file},if=none,id=disk0,format=${_disk_format} \
+    -drive file=${_disk_image},if=none,id=disk0,format=${_disk_format} \
     -device ${_diskdev},drive=disk0,bootindex=1"
 
 [[ "${_disk_drive}" == "sata" ]] && \
     _disk_devices="-device ahci,id=ahci0 ${_disk_devices},bus=ahci0.0"
 
 qemu_disk_check() {
-    if [[ ! -f ${_disk_file} && ! -b ${_disk_file} ]]; then
-        local _info="file not found: ${_disk_file}\n"
-        _info="${_info}how to create: \`qemu-img create -f qcow2 ${_disk_file} -o nocow=on 40G\`\n"
+    if [[ ! -f ${_disk_image} && ! -b ${_disk_image} ]]; then
+        local _info="file not found: ${_disk_image}\n"
+        _info="${_info}how to create: \`qemu-img create -f qcow2 ${_disk_image} -o nocow=on 40G\`\n"
         printerr "${_info}"
     fi
 }

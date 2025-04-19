@@ -44,7 +44,7 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 
 # disk image file, default is ${_vmdir}/disk.qcow2
 # create via command `qemu-img create -f qcow2 disk.qcow2 -o nocow=on 40G`
-#_disk_file=${_vmdir}/disk.qcow2
+#_disk_image=${_vmdir}/disk.qcow2
 
 # enable tpm [yes|no], default is no
 #_tpm_on=yes
