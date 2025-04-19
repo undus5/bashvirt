@@ -5,7 +5,7 @@
 _vmname=$(basename "${_vmdir}")
 
 printerr() {
-    printf "${@}" > >(tee -a ${_vmdir}/qemu_err.log >&2) && exit 1
+    printf "${@}" | tee -a ${_vmdir}/qemu_err.log >&2 && exit 1
 }
 
 _caller_path=$(realpath $0)
@@ -19,6 +19,7 @@ _source_path=$(realpath ${BASH_SOURCE[0]})
 #################################################################################
 
 [[ -z "${_disk_file}" ]] && _disk_file=${_vmdir}/disk.qcow2
+[[ "${_disk_file##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
 [[ -z "${_disk_drive}" ]] && _disk_drive="sata"
 
 case "${_disk_drive}" in
@@ -34,16 +35,17 @@ case "${_disk_drive}" in
 esac
 
 _disk_devices="\
-    -drive file=${_disk_file},if=none,id=disk0 \
+    -drive file=${_disk_file},if=none,id=disk0,format=${_disk_format} \
     -device ${_diskdev},drive=disk0,bootindex=1"
 
 [[ "${_disk_drive}" == "sata" ]] && \
     _disk_devices="-device ahci,id=ahci0 ${_disk_devices},bus=ahci0.0"
 
 qemu_disk_check() {
-    if [[ ! -f ${_disk_file} ]]; then
-        printf "file not found: $(basename ${_disk_file}), create with:\n"
-        printerr "  qemu-img create -f qcow2 $(basename ${_disk_file}) -o nocow=on 40G\n"
+    if [[ ! -f ${_disk_file} && ! -b ${_disk_file} ]]; then
+        local _info="file not found: ${_disk_file}\n"
+        _info="${_info}how to create: \`qemu-img create -f qcow2 ${_disk_file} -o nocow=on 40G\`\n"
+        printerr "${_info}"
     fi
 }
 
@@ -246,12 +248,6 @@ kill_viofsd() {
 
 _qemu_pidf=${_vmdir}/qemu.pid
 _monitor_sock=${_vmdir}/monitor.sock
-
-gen_mac_addr() {
-    printf "$(basename ${_vmdir})" | sha256sum |\
-        awk -v offset="$(( ${1} + 7 ))" '{ printf "52:54:%s:%s:%s:%s\n", \
-        substr($1,1,2), substr($1,3,2), substr($1,5,2), substr($1,offset,2) }'
-}
 
 _qemu_options="\
     -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} \
