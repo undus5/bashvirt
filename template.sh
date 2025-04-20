@@ -49,5 +49,5 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # enable tpm [yes|no], default is no
 #_tpm_on=yes
 
-source path/to/bashvirt.sh "${@}"
+source $(which bashvirt.sh) "${@}"
 

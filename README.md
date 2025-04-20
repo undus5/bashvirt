@@ -32,11 +32,11 @@ $ cd ~/vms/win11
 $ qemu-img create -f qcow2 disk.qcow2 -o nocow=on 40G
 ```
 
-3, create or copy example script to the vm directory, there are comments
+3, create or copy template script to the vm directory, there are comments
 documentation in the script:
 
 ```
-$ cp ~/bashvirt/example.sh ~/vms/win11/run.sh
+$ cp ~/bashvirt/template.sh ~/vms/win11/run.sh
 ```
 
 4, assume you have already downloaded Windows 11 and VirtIO iso images to
