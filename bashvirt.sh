@@ -117,7 +117,7 @@ gen_mac_addr() {
         substr($1,1,2), substr($1,3,2), substr($1,5,2), substr($1,offset,2) }'
 }
 
-[[ -z "${_nic_mode}" ]] && _nic_mode="none"
+[[ -z "${_nic_mode}" ]] && _nic_mode="user"
 
 case "${_nic_mode}" in
     none|"")
