@@ -111,15 +111,18 @@ case "${_nic_drive}" in
         ;;
 esac
 
-[[ -z "${_nic_mode}" ]] && _nic_mode="user"
-
 gen_mac_addr() {
     printf "${_vmname}" | sha256sum |\
         awk -v offset="$(( ${1} + 7 ))" '{ printf "52:54:%s:%s:%s:%s\n", \
         substr($1,1,2), substr($1,3,2), substr($1,5,2), substr($1,offset,2) }'
 }
 
+[[ -z "${_nic_mode}" ]] && _nic_mode="none"
+
 case "${_nic_mode}" in
+    none|"")
+        _nic_devices=""
+        ;;
     user)
         _nic_devices="-nic user,model=${_nic_model},mac=$(gen_mac_addr 0)"
         ;;

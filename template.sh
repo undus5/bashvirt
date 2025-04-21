@@ -39,7 +39,7 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # network drive [e1000|virtio], default is e1000
 #_nic_drive=virtio
 
-# network cards mode, [user|br0br1], default is user
+# network cards mode, [user|br0br1|none], default is user
 #_nic_mode=br0br1
 
 # disk image file, default is ${_vmdir}/disk.qcow2
