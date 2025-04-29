@@ -199,32 +199,32 @@ kill_swtpm() {
 [[ -z "${_guest_uid}" ]] && _guest_uid=1000
 [[ -z "${_guest_gid}" ]] && _guest_gid=1000
 
-_viofsd_exec=/usr/lib/virtiofsd
-_viofsd_sock=${_vmdir}/viofsd.sock
-_viofsd_pidf=${_viofsd_sock}.pid
-_viofsd_pid=$([[ -f ${_viofsd_pidf} ]] && cat ${_viofsd_pidf})
+_virtiofsd_exec=/usr/lib/virtiofsd
+_virtiofsd_sock=${_vmdir}/virtiofsd.sock
+_virtiofsd_pidf=${_virtiofsd_sock}.pid
+_virtiofsd_pid=$([[ -f ${_virtiofsd_pidf} ]] && cat ${_virtiofsd_pidf})
 
 
-[[ -n "${_shared_dir}" && -d "${_shared_dir}" && -f ${_viofsd_exec} ]] && \
-    _viofsd_devices="\
+[[ -n "${_shared_dir}" && -d "${_shared_dir}" && -f ${_virtiofsd_exec} ]] && \
+    _virtiofsd_devices="\
         -object memory-backend-memfd,id=mem,size=${_memory},share=on \
         -numa node,memdev=mem \
-        -chardev socket,id=charviofsd,path=${_viofsd_sock} \
-        -device vhost-user-fs-pci,chardev=charviofsd,tag=viofsd"
+        -chardev socket,id=charvirtiofs,path=${_virtiofsd_sock} \
+        -device vhost-user-fs-pci,chardev=charvirtiofs,tag=virtiofs"
 
-is_pid_viofsd() {
+is_pid_virtiofsd() {
     ps -o command= -p ${1} | grep -q virtiofsd
 }
 
-init_viofsd() {
+init_virtiofsd() {
     if [[ -n "${_shared_dir}" ]]; then
         [[ -d "${_shared_dir}" ]] || printerr "dir not found: ${_shared_dir}\n"
-        [[ -f "${_viofsd_exec}" ]] || printerr "command not found: ${_viofsd_exec}\n"
-        if [[ -z "${_viofsd_pid}" ]] || [[ ! $(is_pid_viofsd "${_viofsd_pid}") ]]; then
+        [[ -f "${_virtiofsd_exec}" ]] || printerr "command not found: ${_virtiofsd_exec}\n"
+        if [[ -z "${_virtiofsd_pid}" ]] || [[ ! $(is_pid_virtiofsd "${_virtiofsd_pid}") ]]; then
             _host_uid=$(id -u)
             _host_gid=$(id -g)
-            ${_viofsd_exec} \
-            --socket-path ${_viofsd_sock} \
+            ${_virtiofsd_exec} \
+            --socket-path ${_virtiofsd_sock} \
             --shared-dir "${_shared_dir}" \
             --sandbox namespace \
             --translate-uid host:${_host_uid}:${_guest_uid}:1 \
@@ -236,10 +236,10 @@ init_viofsd() {
     fi
 }
 
-kill_viofsd() {
-    [[ -f ${_viofsd_pidf} ]] && \
-        $(is_pid_viofsd $(cat ${_viofsd_pidf})) && \
-        kill -9 $(cat ${_viofsd_pidf})
+kill_virtiofsd() {
+    [[ -f ${_virtiofsd_pidf} ]] && \
+        $(is_pid_virtiofsd $(cat ${_virtiofsd_pidf})) && \
+        kill -9 $(cat ${_virtiofsd_pidf})
 }
 
 #################################################################################
@@ -254,7 +254,7 @@ _monitor_sock=${_vmdir}/monitor.sock
 
 _qemu_options="\
     -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} \
-    -m ${_memory} ${_viofsd_devices} \
+    -m ${_memory} ${_virtiofsd_devices} \
     -audiodev pa,id=snd0 -device ich9-intel-hda -device hda-duplex,audiodev=snd0 \
     -monitor unix:${_monitor_sock},server,nowait \
     -device qemu-xhci -pidfile ${_qemu_pidf} \
@@ -267,13 +267,13 @@ _qemu_options="\
 
 qemu_deps_prepare() {
     [[ "${_tpm_on}" == "yes" ]] && init_swtpm
-    init_viofsd
+    init_virtiofsd
     return 0
 }
 
 qemu_err_fallback() {
     [[ "${_tpm_on}" == "yes" ]] && kill_swtpm
-    kill_viofsd
+    kill_virtiofsd
     return 0
 }
 
