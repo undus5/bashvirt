@@ -82,8 +82,12 @@ fi
 
 [[ -z "${_gpu_drive}" ]] && _gpu_drive=std
 case "${_gpu_drive}" in
-    std|qxl)
-        _gpu_device="-vga ${_gpu_drive}"
+    std)
+        # _gpu_device="-vga ${_gpu_drive}"
+        _gpu_device="-device VGA,xres=1920,yres=1080"
+        ;;
+    qxl)
+        _gpu_device="-device qxl-vga,xres=1920,yres=1080"
         ;;
     virtio)
         _gpu_device="-device virtio-vga-gl"
