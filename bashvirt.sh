@@ -74,7 +74,15 @@ if [[ "${_boot_mode}" == "uefi" ]]; then
     _uefi_drives="\
         -drive if=pflash,format=raw,readonly=on,file=${_ovmf_ro} \
         -drive if=pflash,format=raw,file=${_ovmf_var}"
+    # _usb_controller="-device qemu-xhci"
+    _usb_controller="-usb"
+else
+    # _usb_controller="-device usb-ehci"
+    _usb_controller="-usb"
 fi
+
+[[ -z "${_tablet}" ]] && _tablet=yes
+[[ "${_tablet}" == "yes" ]] && _tablet_devices="-device usb-tablet"
 
 #################################################################################
 # Graphic Card
@@ -259,11 +267,13 @@ _monitor_sock=${_vmdir}/monitor.sock
 _qemu_options="\
     -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} \
     -m ${_memory} ${_virtiofsd_devices} \
-    -audiodev pa,id=snd0 -device ich9-intel-hda -device hda-duplex,audiodev=snd0 \
+    -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-duplex,audiodev=snd0 \
     -monitor unix:${_monitor_sock},server,nowait \
-    -device qemu-xhci -pidfile ${_qemu_pidf} \
-    -display sdl,gl=on,full-screen=on ${_gpu_device} \
-    ${_uefi_drives} ${_tpm_devices} ${_disk_devices} ${_bootcd} ${_nic_devices}"
+    -display gtk,gl=on,full-screen=on ${_gpu_device} \
+    -pidfile ${_qemu_pidf} \
+    ${_usb_controller} ${_tablet_devices} \
+    ${_uefi_drives} ${_tpm_devices} \
+    ${_disk_devices} ${_bootcd} ${_nic_devices}"
 
 #################################################################################
 # QEMU start

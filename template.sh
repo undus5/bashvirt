@@ -49,5 +49,8 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # enable tpm [yes|no], default is no
 #_tpm_on=yes
 
+# disable tablet mode, default is yes
+#_tablet=no
+
 source $(which bashvirt.sh) "${@}"
 
