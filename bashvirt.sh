@@ -124,35 +124,41 @@ case "${_nic_drive}" in
 esac
 
 gen_mac_addr() {
-    printf "${_vmname}" | sha256sum |\
-        awk -v offset="$(( ${1} + 7 ))" '{ printf "52:54:%s:%s:%s:%s\n", \
-        substr($1,1,2), substr($1,3,2), substr($1,5,2), substr($1,offset,2) }'
+    printf "${_vmname}${1}" | sha256sum |\
+        awk '{ printf "52:54:%s:%s:%s:%s\n", \
+        substr($0,1,2), substr($0,3,2), substr($0,5,2), substr($0,7,2) }'
 }
 
 [[ -z "${_nic_mode}" ]] && _nic_mode="user"
+
+bridge_check() {
+    local _br=${1}
+    [[ -z "${_br}" ]] && _br=brlan
+    ip link show | grep ${_br} &>/dev/null || \
+        printferr "network bridge not found: ${_br}\n"
+    grep -q "allow ${_br}" /etc/qemu/bridge.conf || \
+        printferr "${_br} not found in /etc/qemu/bridge.conf \n"
+}
 
 case "${_nic_mode}" in
     none|"")
         _nic_devices=""
         ;;
     user)
-        _nic_devices="-nic user,model=${_nic_model},mac=$(gen_mac_addr 0)"
+        _nic_devices="-nic user,model=${_nic_model},mac=$(gen_mac_addr user)"
         ;;
-    br0br1)
-        ip link show | grep br0 &>/dev/null || \
-            printferr "network bridge not found: br0\n"
-        ip link show | grep br1 &>/dev/null || \
-            printferr "network bridge not found: br1\n"
-        grep -q 'allow br0' /etc/qemu/bridge.conf || \
-            printferr "br0 not found in /etc/qemu/bridge.conf \n"
-        grep -q 'allow br1' /etc/qemu/bridge.conf || \
-            printferr "br1 not found in /etc/qemu/bridge.conf \n"
+    brlan)
+        bridge_check brlan
         _nic_devices="\
-            -nic bridge,br=br0,model=${_nic_model},mac=$(gen_mac_addr 0) \
-            -nic bridge,br=br1,model=${_nic_model},mac=$(gen_mac_addr 1)"
+            -nic bridge,br=brlan,model=${_nic_model},mac=$(gen_mac_addr brlan)"
+        ;;
+    brnat)
+        bridge_check brnat
+        _nic_devices="\
+            -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat)"
         ;;
     *)
-        printferr "_nic_mode only support: <user|br0br1>\n"
+        printferr "_nic_mode only support: <user|brlan|brnat>\n"
         ;;
 esac
 

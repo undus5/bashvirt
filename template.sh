@@ -39,8 +39,8 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # network drive [e1000|virtio], default is e1000
 #_nic_drive=virtio
 
-# network cards mode, [user|br0br1|none], default is user
-#_nic_mode=br0br1
+# network cards mode, [user|brlan|brnat], default is user
+#_nic_mode=brlan
 
 # disk image file, default is ${_vmdir}/disk.qcow2
 # create via command `qemu-img create -f qcow2 disk.qcow2 -o nocow=on 40G`
