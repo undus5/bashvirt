@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 
-[[ -z "${_vmdir}" ]] && printf "_vmdir is undefined\n" >&2
-[[ -d "${_vmdir}" ]] || printf "dir not found: ${_vmdir}\n" >&2
-_vmname=$(basename "${_vmdir}")
+# do not run this script directly, source it from template under a dedicated _vmdir
 
-printferr() {
-    printf "${@}" | tee -a ${_vmdir}/qemu_err.log >&2 && exit 1
+eprintf() {
+    [[ -n "${_vmdir}" ]] && printf "${@}" >> ${_vmdir}/qemu_err.log
+    printf "${@}" >&2
+    exit 1
 }
 
-_caller_path=$(realpath $0)
-_source_path=$(realpath ${BASH_SOURCE[0]})
-
-[[ "${_caller_path}" == "${_source_path}" ]] && \
-    printferr "do not run this script directly, source it\n"
+[[ -n "${_vmdir}" ]] || eprintf "_vmdir is undefined\n"
+[[ -d "${_vmdir}" ]] || eprintf "directory not found: ${_vmdir}\n"
+_vmname=$(basename "${_vmdir}")
 
 #################################################################################
 # Disk Image
@@ -30,7 +28,7 @@ case "${_disk_drive}" in
         _diskdev="virtio-blk-pci"
         ;;
     *)
-        printferr "_disk_drive only support: <sata|virtio>\n"
+        eprintf "_disk_drive only support: <sata|virtio>\n"
         ;;
 esac
 
@@ -45,7 +43,7 @@ qemu_disk_check() {
     if [[ ! -f ${_disk_image} && ! -b ${_disk_image} ]]; then
         local _info="file not found: ${_disk_image}\n"
         _info="${_info}how to create: \`qemu-img create -f qcow2 ${_disk_image} -o nocow=on 40G\`\n"
-        printferr "${_info}"
+        eprintf "${_info}"
     fi
 }
 
@@ -54,7 +52,7 @@ qemu_disk_check() {
 #################################################################################
 
 if [[ -n ${_boot_iso} ]]; then
-    [[ -f ${_boot_iso} ]] || printferr "file not found: ${_boot_iso}\n"
+    [[ -f ${_boot_iso} ]] || eprintf "file not found: ${_boot_iso}\n"
     _bootcd="\
         -drive file=${_boot_iso},media=cdrom,if=none,id=cd0 \
         -device ide-cd,drive=cd0,bootindex=0"
@@ -101,7 +99,7 @@ case "${_gpu_drive}" in
         _gpu_device="-device virtio-vga-gl"
         ;;
     *)
-        printferr "_gpu_drive only support: <std|qxl|virtio>\n"
+        eprintf "_gpu_drive only support: <std|qxl|virtio>\n"
         ;;
 esac
 
@@ -119,7 +117,7 @@ case "${_nic_drive}" in
         _nic_model="virtio-net-pci"
         ;;
     *)
-        printferr "_nic_drive only support: <e1000|virtio>\n"
+        eprintf "_nic_drive only support: <e1000|virtio>\n"
         ;;
 esac
 
@@ -135,9 +133,9 @@ bridge_check() {
     local _br=${1}
     [[ -z "${_br}" ]] && _br=brlan
     ip link show | grep ${_br} &>/dev/null || \
-        printferr "network bridge not found: ${_br}\n"
+        eprintf "network bridge not found: ${_br}\n"
     grep -q "allow ${_br}" /etc/qemu/bridge.conf || \
-        printferr "${_br} not found in /etc/qemu/bridge.conf \n"
+        eprintf "${_br} not found in /etc/qemu/bridge.conf \n"
 }
 
 case "${_nic_mode}" in
@@ -158,7 +156,7 @@ case "${_nic_mode}" in
             -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat)"
         ;;
     *)
-        printferr "_nic_mode only support: <user|brlan|brnat>\n"
+        eprintf "_nic_mode only support: <user|brlan|brnat>\n"
         ;;
 esac
 
@@ -194,7 +192,7 @@ is_pid_swtpm() {
 }
 
 init_swtpm() {
-    command -v swtpm &>/dev/null || printferr "swtpm: command not found\n"
+    command -v swtpm &>/dev/null || eprintf "swtpm: command not found\n"
     if [[ -z "${_tpm_pid}" ]] || [[ ! $(is_pid_swtpm "${_tpm_pid}") ]]; then
         swtpm socket --tpm2 \
             --tpmstate dir=${_vmdir} \
@@ -236,8 +234,8 @@ is_pid_virtiofsd() {
 
 init_virtiofsd() {
     if [[ -n "${_shared_dir}" ]]; then
-        [[ -d "${_shared_dir}" ]] || printferr "dir not found: ${_shared_dir}\n"
-        [[ -f "${_virtiofsd_exec}" ]] || printferr "command not found: ${_virtiofsd_exec}\n"
+        [[ -d "${_shared_dir}" ]] || eprintf "dir not found: ${_shared_dir}\n"
+        [[ -f "${_virtiofsd_exec}" ]] || eprintf "command not found: ${_virtiofsd_exec}\n"
         if [[ -z "${_virtiofsd_pid}" ]] || [[ ! $(is_pid_virtiofsd "${_virtiofsd_pid}") ]]; then
             _host_uid=$(id -u)
             _host_gid=$(id -g)
@@ -300,7 +298,7 @@ qemu_err_fallback() {
 qemu_running_check() {
     [[ -f ${_qemu_pidf} ]] || return 0
     _proc_comm=$(cat ${_qemu_pidf} | xargs -I{} ps -o command= -p {})
-    [[ "${_proc_comm}" =~ "qemu-system-x86_64" ]] && printferr "vm already running\n"
+    [[ "${_proc_comm}" =~ "qemu-system-x86_64" ]] && eprintf "vm already running\n"
 }
 
 qemu_start() {
@@ -327,7 +325,7 @@ monitor_exec() {
 
 usb_attach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
-    [[ "${_devid}" =~ ^[a-z0-9]{4}:[a-z0-9]{4}$ ]] || printferr "invalid device ID\n"
+    [[ "${_devid}" =~ ^[a-z0-9]{4}:[a-z0-9]{4}$ ]] || eprintf "invalid device ID\n"
     local _vendid=$(echo "${_arg}" | cut -d : -f 1)
     local _prodid=$(echo "${_arg}" | cut -d : -f 2)
     monitor_exec \
@@ -336,7 +334,7 @@ usb_attach() {
 
 usb_detach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
-    [[ "${_devid}" =~ ^[a-z0-9]{4}:[a-z0-9]{4}$ ]] || printferr "invalid device ID\n"
+    [[ "${_devid}" =~ ^[a-z0-9]{4}:[a-z0-9]{4}$ ]] || eprintf "invalid device ID\n"
     monitor_exec "device_del ${_devid}"
 }
 

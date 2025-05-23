@@ -87,3 +87,5 @@ _gpu_drive=virtio
 
 All Done.
 
+There are some other useful command options, run `~/vms/win11/run.sh -h` to check.
+
