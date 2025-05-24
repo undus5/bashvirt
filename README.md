@@ -87,5 +87,21 @@ _gpu_drive=virtio
 
 All Done.
 
-There are some other useful command options, run `~/vms/win11/run.sh -h` to check.
+## Options
+
+Run `~/vms/win11/run.sh -h` to get help info.
+
+```
+usage: run.sh [actions]
+actions:
+                            boot virtual machine normally without arguments
+    usb-attach <device_id>  passthrough usb device to virtual machine
+    usb-detach <device_id>  detach usb device
+    usb-list                list attached devices
+    monitor-exec            send command to qemu monitor
+    monitor-connect         connect qemu monitor
+    -h, --help, help        help info
+device_id:
+    looks like "1d6b:0002", get from command `lsusb`
+```
 

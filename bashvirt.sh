@@ -358,7 +358,7 @@ actions:
     monitor-connect         connect qemu monitor
     -h, --help, help        help info
 device_id:
-    looks like "1d6b:0002", get from command \`lsusb\`, 
+    looks like "1d6b:0002", get from command \`lsusb\`
 EOB
 }
 
