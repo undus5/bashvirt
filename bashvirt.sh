@@ -323,9 +323,11 @@ monitor_exec() {
         tail --lines=+2 | grep -v '^(qemu)'
 }
 
+_id_pattern=^[0-9a-f]{4}:[0-9a-f]{4}$
+
 usb_attach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
-    [[ "${_devid}" =~ ^[a-z0-9]{4}:[a-z0-9]{4}$ ]] || eprintf "invalid device ID\n"
+    [[ "${_devid}" =~ $_id_pattern ]] || eprintf "invalid device ID\n"
     local _vendid=$(echo "${_arg}" | cut -d : -f 1)
     local _prodid=$(echo "${_arg}" | cut -d : -f 2)
     monitor_exec \
@@ -334,7 +336,7 @@ usb_attach() {
 
 usb_detach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
-    [[ "${_devid}" =~ ^[a-z0-9]{4}:[a-z0-9]{4}$ ]] || eprintf "invalid device ID\n"
+    [[ "${_devid}" =~ $_id_pattern ]] || eprintf "invalid device ID\n"
     monitor_exec "device_del ${_devid}"
 }
 
