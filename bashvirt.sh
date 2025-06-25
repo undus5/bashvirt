@@ -328,16 +328,18 @@ _id_pattern=^[0-9a-f]{4}:[0-9a-f]{4}$
 usb_attach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
     [[ "${_devid}" =~ $_id_pattern ]] || eprintf "invalid device ID\n"
-    local _vendid=$(echo "${_arg}" | cut -d : -f 1)
-    local _prodid=$(echo "${_arg}" | cut -d : -f 2)
+    local _vendid=$(echo "${_devid}" | cut -d : -f 1)
+    local _prodid=$(echo "${_devid}" | cut -d : -f 2)
     monitor_exec \
-        "device_add usb-host,vendorid=0x${_vendid},productid=0x${_prodid},id=${_devid}"
+        "device_add usb-host,vendorid=0x${_vendid},productid=0x${_prodid},id=usb${_vendid}${_prodid}"
 }
 
 usb_detach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
     [[ "${_devid}" =~ $_id_pattern ]] || eprintf "invalid device ID\n"
-    monitor_exec "device_del ${_devid}"
+    local _vendid=$(echo "${_devid}" | cut -d : -f 1)
+    local _prodid=$(echo "${_devid}" | cut -d : -f 2)
+    monitor_exec "device_del usb${_vendid}${_prodid}"
 }
 
 usb_list() {
@@ -370,11 +372,11 @@ case ${1} in
         ;;
     usb-attach)
         shift
-        usb_attach ${1}
+        usb_attach ${@}
         ;;
     usb-detach)
         shift
-        usb_detach ${1}
+        usb_detach ${@}
         ;;
     usb-list)
         usb_list
