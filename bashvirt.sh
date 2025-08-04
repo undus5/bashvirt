@@ -79,8 +79,11 @@ else
     _usb_controller="-usb"
 fi
 
-[[ -z "${_tablet}" ]] && _tablet=yes
-[[ "${_tablet}" == "yes" ]] && _tablet_devices="-device usb-tablet"
+# [[ -z "${_tablet}" ]] && _tablet=yes
+# [[ "${_tablet}" == "yes" ]] && _tablet_devices="-device usb-tablet"
+[[ -z "${_display}" ]] && _display=sdl
+[[ "${_display}" != "sdl" ]] && _display=gtk
+[[ "${_display}" == "gtk" ]] && _tablet_devices="-device usb-tablet"
 
 #################################################################################
 # Graphic Card
@@ -273,9 +276,9 @@ _qemu_options="\
     -m ${_memory} ${_virtiofsd_devices} \
     -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-duplex,audiodev=snd0 \
     -monitor unix:${_monitor_sock},server,nowait \
-    -display gtk,gl=on,full-screen=on ${_gpu_device} \
+    -display ${_display},gl=on,full-screen=on ${_gpu_device} ${_tablet_devices} \
     -pidfile ${_qemu_pidf} \
-    ${_usb_controller} ${_tablet_devices} \
+    ${_usb_controller} \
     ${_uefi_drives} ${_tpm_devices} \
     ${_disk_devices} ${_bootcd} ${_nic_devices}"
 
