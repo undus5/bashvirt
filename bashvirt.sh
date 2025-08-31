@@ -274,7 +274,7 @@ _monitor_sock=${_vmdir}/monitor.sock
 _qemu_options="\
     -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} \
     -m ${_memory} ${_virtiofsd_devices} \
-    -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-duplex,audiodev=snd0 \
+    -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0 \
     -monitor unix:${_monitor_sock},server,nowait \
     -display ${_display},gl=on,full-screen=on ${_gpu_device} ${_tablet_devices} \
     -pidfile ${_qemu_pidf} \

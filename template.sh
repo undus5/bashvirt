@@ -43,7 +43,7 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 #_nic_mode=brlan
 
 # disk image file, default is ${_vmdir}/disk.qcow2
-# create via command `qemu-img create -f qcow2 disk.qcow2 -o nocow=on 40G`
+# create via command `qemu-img create -f qcow2 disk.qcow2 -o nocow=on 128G`
 #_disk_image=${_vmdir}/disk.qcow2
 
 # enable tpm [yes|no], default is no
@@ -53,4 +53,3 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 #_display=gtk
 
 source $(which bashvirt.sh) "${@}"
-
