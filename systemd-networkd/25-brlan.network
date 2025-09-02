@@ -1,0 +1,7 @@
+[Match]
+Name=brlan
+[Link]
+RequiredForOnline=routable
+[Network]
+DHCP=yes
+IPv4Forwarding=yes

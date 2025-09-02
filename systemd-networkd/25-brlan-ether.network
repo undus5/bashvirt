@@ -1,0 +1,4 @@
+[Match]
+Name=enp42s0
+[Network]
+Bridge=brlan

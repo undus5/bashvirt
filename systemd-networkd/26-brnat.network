@@ -1,0 +1,10 @@
+[Match]
+Name=brnat
+[Network]
+IPv4Forwarding=yes
+DHCPServer=true
+Address=10.9.8.7/24
+[DHCPServer]
+DNS=10.9.8.7
+[DHCPv4]
+RouteMetric=256
