@@ -57,7 +57,7 @@ _nic_drive=virtio
 _gpu_drive=std
 _boot_iso=~/Downloads/win11.iso
 _virtio_iso=~/Downloads/virtio.iso
-_qemu_options_ext="${_qemu_options_ext} -drive file=${_virtio_iso},media=cdrom"
+_qemu_options_ext+=" -drive file=${_virtio_iso},media=cdrom"
 
 source ~/bashvirt/bashvirt.sh
 ```
@@ -80,7 +80,7 @@ again, comment out the iso images part, or it would boot from iso every time:
 _gpu_drive=virtio
 #_boot_iso=~/Downloads/win11.iso
 #_virtio_iso=~/Downloads/virtio.iso
-#_qemu_options_ext="${_qemu_options_ext} -drive file=${_virtio_iso},media=cdrom"
+#_qemu_options_ext+=" -drive file=${_virtio_iso},media=cdrom"
 
 ...
 ```

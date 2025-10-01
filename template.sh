@@ -8,7 +8,7 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 
 # add more non-boot iso:
 #_second_iso=path/to/virtio.iso
-#_qemu_options_ext="${_qemu_options_ext} -drive file=${_second_iso},media=cdrom"
+#_qemu_options_ext+=" -drive file=${_second_iso},media=cdrom"
 
 # shared folder between host and guest (virtiofs)
 #_shared_dir=path/to

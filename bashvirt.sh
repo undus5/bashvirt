@@ -42,7 +42,7 @@ _disk_devices="\
 qemu_disk_check() {
     if [[ ! -f ${_disk_image} && ! -b ${_disk_image} ]]; then
         local _info="file not found: ${_disk_image}\n"
-        _info="${_info}how to create: \`qemu-img create -f qcow2 ${_disk_image} -o nocow=on 40G\`\n"
+        _info+="how to create: \`qemu-img create -f qcow2 ${_disk_image} -o nocow=on 40G\`\n"
         eprintf "${_info}"
     fi
 }
@@ -169,11 +169,11 @@ esac
 
 _cpu_model="host"
 if [[ -n "${_hyperv}" && "${_hyperv}" == "yes" ]]; then
-    _cpu_model="${_cpu_model},hv_relaxed,hv_vapic,hv_spinlocks=0xfff"
-    _cpu_model="${_cpu_model},hv_vpindex,hv_synic,hv_time,hv_stimer"
-    _cpu_model="${_cpu_model},hv_tlbflush,hv_tlbflush_ext,hv_ipi,hv_stimer_direct"
-    _cpu_model="${_cpu_model},hv_runtime,hv_frequencies,hv_reenlightenment"
-    _cpu_model="${_cpu_model},hv_avic,hv_xmm_input"
+    _cpu_model+=",hv_relaxed,hv_vapic,hv_spinlocks=0xfff"
+    _cpu_model+=",hv_vpindex,hv_synic,hv_time,hv_stimer"
+    _cpu_model+=",hv_tlbflush,hv_tlbflush_ext,hv_ipi,hv_stimer_direct"
+    _cpu_model+=",hv_runtime,hv_frequencies,hv_reenlightenment"
+    _cpu_model+=",hv_avic,hv_xmm_input"
 fi
 
 #################################################################################
