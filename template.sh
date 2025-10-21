@@ -12,9 +12,6 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # shared folder between host and guest (virtiofs)
 #_shared_dir=path/to
 
-# network cards mode, [qemu|nat|lan|natlan|none], default is qemu
-#_nic_mode=nat
-
 # graphic card, [std|virtio|qxl], default is std
 #_gpu_drive=virtio
 
@@ -28,8 +25,11 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # memory, default is 2G
 #_mem=4G
 
-# boot mode [bios|uefi], default is uefi
-#_boot_mode=bios
+# storage size, default is 120G
+#_storage=80G
+
+# network cards mode, [qemu|nat|lan|natlan|none], default is qemu
+#_nic_mode=nat
 
 # enable hyper-v enlightenments for windows guest, [no|yes], default is no
 #_hyperv=yes
@@ -37,8 +37,10 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # enable tpm2 [no|yes], default is no
 #_tpm_on=yes
 
-# disk image file, default is ${_vmdir}/disk.qcow2
-# create via command `qemu-img create -f qcow2 disk.qcow2 -o nocow=on 120G`
+# boot mode [uefi|bios], default is uefi
+#_boot_mode=bios
+
+# disk image file, default is ${_vmdir}/disk.qcow2, auto created if not exists
 #_disk_image=${_vmdir}/disk.qcow2
 
 # disk drive [virtio|sata], default is virtio

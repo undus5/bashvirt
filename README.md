@@ -27,13 +27,7 @@ $ mkdir -p ~/vms/win11
 $ cd ~/vms/win11
 ```
 
-2, create disk image file for the virtual machine:
-
-```
-$ qemu-img create -f qcow2 disk.qcow2 -o nocow=on 120G
-```
-
-3, copy template script to the vm directory as launching script,
+2, copy template script to the vm directory as launching script,
 there are detailed comments for all options:
 
 ```
@@ -44,7 +38,7 @@ or
 $ bashvirt.sh tpl > ~/vms/win11/run.sh
 ```
 
-4, assume you have already downloaded Windows 11 and VirtIO iso images to
+3, assume you have already downloaded Windows 11 and VirtIO iso images to
 `~/Downloads`, then edit the script with text editor:
 
 ```
@@ -54,11 +48,10 @@ _vmdir=~/vms/win11
 
 _cpus=4
 _mem=8G
+_storage=80G
 _boot_mode=uefi
 _hyperv=yes
 _tpm_on=yes
-_gpu_drive=std
-_nic_mode=qemu
 _disk_drive=virtio
 _nic_drive=virtio
 _boot_iso=~/Downloads/win11.iso
@@ -67,7 +60,7 @@ _nonboot_iso=~/Downloads/virtio.iso
 source ~/bashvirt/bashvirt.sh
 ```
 
-5, run the script to lanuch virtual machine and install operating system:
+4, run the script to lanuch virtual machine and install operating system:
 
 ```
 $ chmod u+x ~/vms/win11/run.sh
@@ -76,7 +69,7 @@ $ ~/vms/win11/run.sh
 
 if anything go wrong, it would generate a log file called `journal.txt`.
 
-6, after installation finished, shutdown the virtual machine, edit the script
+5, after installation finished, shutdown the virtual machine, edit the script
 again, comment out the iso images part, or it would boot from iso every time:
 
 ```

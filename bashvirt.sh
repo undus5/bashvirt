@@ -47,11 +47,13 @@ _vmname=$(basename "${_vmdir}")
 # Disk Image
 #################################################################################
 
-_diskname=disk.qcow2
-[[ -z "${_disk_image}" ]] && _disk_image=${_vmdir}/${_diskname}
+[[ -z "${_storage}" ]] && _storage=120G
+[[ -z "${_disk_image}" ]] && _disk_image=${_vmdir}/disk.qcow2
 [[ "${_disk_image##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
-[[ -z "${_disk_drive}" ]] && _disk_drive="virtio"
+[[ -f ${_disk_image} ]] || \
+    qemu-img create -f ${_disk_format} ${_disk_image} -o nocow=on ${_storage}
 
+[[ -z "${_disk_drive}" ]] && _disk_drive="virtio"
 case "${_disk_drive}" in
     virtio)
         _diskdev="virtio-blk-pci"
@@ -70,14 +72,6 @@ _disk_devices="\
 
 [[ "${_disk_drive}" == "sata" ]] && \
     _disk_devices="-device ahci,id=ahci0 ${_disk_devices},bus=ahci0.0"
-
-qemu_disk_check() {
-    if [[ ! -f ${_disk_image} && ! -b ${_disk_image} ]]; then
-        local _info="file not found: ${_disk_image}\n"
-        _info+="how to create: \`qemu-img create -f qcow2 ${_diskname} -o nocow=on 120G\`\n"
-        eprintf "${_info}"
-    fi
-}
 
 #################################################################################
 # CDROM
@@ -109,18 +103,7 @@ if [[ "${_boot_mode}" == "uefi" ]]; then
     _uefi_drives="\
         -drive if=pflash,format=raw,readonly=on,file=${_ovmf_ro} \
         -drive if=pflash,format=raw,file=${_ovmf_var}"
-    # _usb_controller="-device qemu-xhci"
-    _usb_controller="-usb"
-else
-    # _usb_controller="-device usb-ehci"
-    _usb_controller="-usb"
 fi
-
-# [[ -z "${_tablet}" ]] && _tablet=yes
-# [[ "${_tablet}" == "yes" ]] && _tablet_devices="-device usb-tablet"
-[[ -z "${_display}" ]] && _display=sdl
-[[ "${_display}" != "sdl" ]] && _display=gtk
-[[ "${_display}" == "gtk" ]] && _tablet_devices="-device usb-tablet"
 
 #################################################################################
 # Graphic Card
@@ -129,19 +112,23 @@ fi
 [[ -z "${_gpu_drive}" ]] && _gpu_drive=std
 case "${_gpu_drive}" in
     std)
-        # _gpu_device="-vga ${_gpu_drive}"
-        _gpu_device="-device VGA,xres=1920,yres=1080"
-        ;;
-    qxl)
-        _gpu_device="-device qxl-vga,xres=1920,yres=1080"
+        _gpu_device="-vga std"
         ;;
     virtio)
         _gpu_device="-device virtio-vga-gl"
         ;;
+    qxl)
+        _gpu_device="-device qxl-vga"
+        ;;
     *)
-        eprintf "_gpu_drive only support: <std|qxl|virtio>\n"
+        eprintf "_gpu_drive only support: <std|virtio|qxl>\n"
         ;;
 esac
+
+[[ -z "${_display}" ]] && _display=sdl
+[[ "${_display}" != "sdl" ]] && _display=gtk
+_display_device="${_display},gl=on,full-screen=on"
+# [[ "${_display}" == "gtk" ]] && _display_device+=" -usb -device usb-tablet"
 
 #################################################################################
 # Network Card
@@ -319,11 +306,10 @@ _qemu_options="\
     -m ${_mem} ${_virtiofsd_devices} \
     -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0 \
     -monitor unix:${_monitor_sock},server,nowait \
-    -display ${_display},gl=on,full-screen=on ${_gpu_device} ${_tablet_devices} \
-    -pidfile ${_qemu_pidf} \
-    ${_usb_controller} \
+    ${_gpu_device} -display ${_display_device} \
     ${_uefi_drives} ${_tpm_devices} \
-    ${_disk_devices} ${_bootcd} ${_nonbootcd} ${_nic_devices} ${_rtc}"
+    ${_disk_devices} ${_bootcd} ${_nonbootcd} ${_nic_devices} ${_rtc} \
+    -pidfile ${_qemu_pidf}"
 
 #################################################################################
 # QEMU start
@@ -349,7 +335,6 @@ qemu_running_check() {
 
 qemu_start() {
     qemu_running_check
-    qemu_disk_check
     trap 'qemu_err_fallback; exit 1' ERR
     qemu_deps_prepare
     qemu-system-x86_64 ${_qemu_options} ${_qemu_options_ext} 2> >(tee -a ${_logfile})
