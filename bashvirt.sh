@@ -1,12 +1,43 @@
 #!/usr/bin/env bash
 
-# do not run this script directly, source it from template under a dedicated _vmdir
-
+_warning="warning: do not run \`$(basename ${BASH_SOURCE[0]})\` directly"
+_warning+=", source it from launching script under a dedicated \`_vmdir\`"
+_logfile=${_vmdir}/journal.txt
 eprintf() {
-    [[ -n "${_vmdir}" ]] && printf "${@}" >> ${_vmdir}/qemu_err.log
+    [[ -n "${_vmdir}" ]] && printf "${@}" >> ${_logfile}
     printf "${@}" >&2
+    printf "\n${_warning}\n" >&2
     exit 1
 }
+
+print_help() {
+cat << EOB
+usage: $(basename $0) [actions]
+actions:
+                            boot virtual machine normally without arguments
+    usb-attach <device_id>  passthrough usb device to virtual machine
+    usb-detach <device_id>  detach usb device
+    usb-list                list attached devices
+    monitor-exec            send command to qemu monitor
+    monitor-connect         connect qemu monitor
+    -h, --help, help        help info
+    tpl                     print template
+device_id:
+    looks like "1d6b:0002", get from command \`lsusb\`
+EOB
+}
+
+_sdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
+
+case ${1} in
+    tpl)
+        cat ${_sdir}/template.sh
+        exit 0
+        ;;
+    -h|--help|help)
+        print_help
+        ;;
+esac
 
 [[ -n "${_vmdir}" ]] || eprintf "_vmdir is undefined\n"
 [[ -d "${_vmdir}" ]] || eprintf "directory not found: ${_vmdir}\n"
@@ -16,19 +47,20 @@ _vmname=$(basename "${_vmdir}")
 # Disk Image
 #################################################################################
 
-[[ -z "${_disk_image}" ]] && _disk_image=${_vmdir}/disk.qcow2
+_diskname=disk.qcow2
+[[ -z "${_disk_image}" ]] && _disk_image=${_vmdir}/${_diskname}
 [[ "${_disk_image##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
-[[ -z "${_disk_drive}" ]] && _disk_drive="sata"
+[[ -z "${_disk_drive}" ]] && _disk_drive="virtio"
 
 case "${_disk_drive}" in
-    sata)
-        _diskdev="ide-hd"
-        ;;
     virtio)
         _diskdev="virtio-blk-pci"
         ;;
+    sata)
+        _diskdev="ide-hd"
+        ;;
     *)
-        eprintf "_disk_drive only support: <sata|virtio>\n"
+        eprintf "_disk_drive only support: <virtio|sata>\n"
         ;;
 esac
 
@@ -42,13 +74,13 @@ _disk_devices="\
 qemu_disk_check() {
     if [[ ! -f ${_disk_image} && ! -b ${_disk_image} ]]; then
         local _info="file not found: ${_disk_image}\n"
-        _info+="how to create: \`qemu-img create -f qcow2 ${_disk_image} -o nocow=on 40G\`\n"
+        _info+="how to create: \`qemu-img create -f qcow2 ${_diskname} -o nocow=on 120G\`\n"
         eprintf "${_info}"
     fi
 }
 
 #################################################################################
-# BootCD
+# CDROM
 #################################################################################
 
 if [[ -n ${_boot_iso} ]]; then
@@ -58,12 +90,17 @@ if [[ -n ${_boot_iso} ]]; then
         -device ide-cd,drive=cd0,bootindex=0"
 fi
 
+if [[ -n ${_nonboot_iso} ]]; then
+    [[ -f ${_nonboot_iso} ]] || eprintf "file not found: ${_nonboot_iso}\n"
+    _nonbootcd="-drive file=${_nonboot_iso},media=cdrom"
+fi
+
 
 #################################################################################
-# BIOS / UEFI
+# UEFI / BIOS
 #################################################################################
 
-[[ -z ${_boot_mode} ]] && _boot_mode="bios"
+[[ -z ${_boot_mode} ]] && _boot_mode="uefi"
 
 if [[ "${_boot_mode}" == "uefi" ]]; then
     _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
@@ -110,17 +147,17 @@ esac
 # Network Card
 #################################################################################
 
-[[ -z "${_nic_drive}" ]] && _nic_drive="e1000"
+[[ -z "${_nic_drive}" ]] && _nic_drive="virtio"
 
 case "${_nic_drive}" in
-    e1000)
-        _nic_model="e1000"
-        ;;
     virtio)
         _nic_model="virtio-net-pci"
         ;;
+    e1000)
+        _nic_model="e1000"
+        ;;
     *)
-        eprintf "_nic_drive only support: <e1000|virtio>\n"
+        eprintf "_nic_drive only support: <virtio|e1000>\n"
         ;;
 esac
 
@@ -129,8 +166,6 @@ gen_mac_addr() {
         awk '{ printf "52:54:%s:%s:%s:%s\n", \
         substr($0,1,2), substr($0,3,2), substr($0,5,2), substr($0,7,2) }'
 }
-
-[[ -z "${_nic_mode}" ]] && _nic_mode="user"
 
 bridge_check() {
     local _br=${1}
@@ -142,24 +177,31 @@ bridge_check() {
 }
 
 case "${_nic_mode}" in
-    none|"")
-        _nic_devices=""
-        ;;
-    user)
+    ""|qemu)
         _nic_devices="-nic user,model=${_nic_model},mac=$(gen_mac_addr user)"
         ;;
-    brlan)
-        bridge_check brlan
-        _nic_devices="\
-            -nic bridge,br=brlan,model=${_nic_model},mac=$(gen_mac_addr brlan)"
-        ;;
-    brnat)
+    nat)
         bridge_check brnat
         _nic_devices="\
             -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat)"
         ;;
+    lan)
+        bridge_check brlan
+        _nic_devices="\
+            -nic bridge,br=brlan,model=${_nic_model},mac=$(gen_mac_addr brlan)"
+        ;;
+    natlan)
+        bridge_check brnat
+        bridge_check brlan
+        _nic_devices="\
+            -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat) \
+            -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brlan)"
+        ;;
+    none)
+        _nic_devices=""
+        ;;
     *)
-        eprintf "_nic_mode only support: <user|brlan|brnat>\n"
+        eprintf "_nic_mode only support: <qemu|nat|lan|natlan|none>\n"
         ;;
 esac
 
@@ -174,6 +216,7 @@ if [[ -n "${_hyperv}" && "${_hyperv}" == "yes" ]]; then
     _cpu_model+=",hv_tlbflush,hv_tlbflush_ext,hv_ipi,hv_stimer_direct"
     _cpu_model+=",hv_runtime,hv_frequencies,hv_reenlightenment"
     _cpu_model+=",hv_avic,hv_xmm_input"
+    _rtc="-rtc base=localtime"
 fi
 
 #################################################################################
@@ -214,7 +257,7 @@ kill_swtpm() {
 # memory, virtiofsd
 #################################################################################
 
-[[ -z "${_memory}" ]] && _memory=2G
+[[ -z "${_mem}" ]] && _mem=2G
 [[ -z "${_guest_uid}" ]] && _guest_uid=1000
 [[ -z "${_guest_gid}" ]] && _guest_gid=1000
 
@@ -226,7 +269,7 @@ _virtiofsd_pid=$([[ -f ${_virtiofsd_pidf} ]] && cat ${_virtiofsd_pidf})
 
 [[ -n "${_shared_dir}" && -d "${_shared_dir}" && -f ${_virtiofsd_exec} ]] && \
     _virtiofsd_devices="\
-        -object memory-backend-memfd,id=mem,size=${_memory},share=on \
+        -object memory-backend-memfd,id=mem,size=${_mem},share=on \
         -numa node,memdev=mem \
         -chardev socket,id=charvirtiofs,path=${_virtiofsd_sock} \
         -device vhost-user-fs-pci,chardev=charvirtiofs,tag=virtiofs"
@@ -273,14 +316,14 @@ _monitor_sock=${_vmdir}/monitor.sock
 
 _qemu_options="\
     -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} \
-    -m ${_memory} ${_virtiofsd_devices} \
+    -m ${_mem} ${_virtiofsd_devices} \
     -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0 \
     -monitor unix:${_monitor_sock},server,nowait \
     -display ${_display},gl=on,full-screen=on ${_gpu_device} ${_tablet_devices} \
     -pidfile ${_qemu_pidf} \
     ${_usb_controller} \
     ${_uefi_drives} ${_tpm_devices} \
-    ${_disk_devices} ${_bootcd} ${_nic_devices}"
+    ${_disk_devices} ${_bootcd} ${_nonbootcd} ${_nic_devices} ${_rtc}"
 
 #################################################################################
 # QEMU start
@@ -309,7 +352,7 @@ qemu_start() {
     qemu_disk_check
     trap 'qemu_err_fallback; exit 1' ERR
     qemu_deps_prepare
-    qemu-system-x86_64 ${_qemu_options} ${_qemu_options_ext} 2> >(tee -a ${_vmdir}/qemu_err.log)
+    qemu-system-x86_64 ${_qemu_options} ${_qemu_options_ext} 2> >(tee -a ${_logfile})
 }
 
 #################################################################################
@@ -353,22 +396,6 @@ usb_list() {
 # Options Dispatcher
 #################################################################################
 
-print_help() {
-cat << EOB
-usage: $(basename $0) [actions]
-actions:
-                            boot virtual machine normally without arguments
-    usb-attach <device_id>  passthrough usb device to virtual machine
-    usb-detach <device_id>  detach usb device
-    usb-list                list attached devices
-    monitor-exec            send command to qemu monitor
-    monitor-connect         connect qemu monitor
-    -h, --help, help        help info
-device_id:
-    looks like "1d6b:0002", get from command \`lsusb\`
-EOB
-}
-
 case ${1} in
     "")
         qemu_start
@@ -390,6 +417,9 @@ case ${1} in
         ;;
     monitor-connect)
         monitor_connect
+        ;;
+    tpl)
+        cat ${_sdir}/template.sh
         ;;
     -h|--help|help)
         print_help
