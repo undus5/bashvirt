@@ -15,11 +15,13 @@ cat << EOB
 usage: $(basename $0) [actions]
 actions:
                             boot virtual machine normally without arguments
+    reset                   equals to press power reset button
+    tty <[1-7]>             send key combo ctrl-alt-f[1-7] to virtual machine
     usb-attach <device_id>  passthrough usb device to virtual machine
     usb-detach <device_id>  detach usb device
     usb-list                list attached devices
     monitor-exec            send command to qemu monitor
-    monitor-connect         connect qemu monitor
+    monitor-conn            connect to qemu monitor, interactive mode
     -h, --help, help        help info
     tpl                     print template
 device_id:
@@ -377,6 +379,11 @@ usb_list() {
     monitor_exec "info usb"
 }
 
+switch_tty() {
+    [[ "${1}" =~ ^[1-7]$ ]] || eprintf "invalid tty number\n"
+    monitor_exec sendkey ctrl-alt-f${1}
+}
+
 #################################################################################
 # Options Dispatcher
 #################################################################################
@@ -384,6 +391,13 @@ usb_list() {
 case ${1} in
     "")
         qemu_start
+        ;;
+    reset)
+        monitor_exec system_reset
+        ;;
+    tty)
+        shift
+        switch_tty ${@}
         ;;
     usb-attach)
         shift
@@ -400,7 +414,7 @@ case ${1} in
         shift
         monitor_exec ${@}
         ;;
-    monitor-connect)
+    monitor-conn)
         monitor_connect
         ;;
     tpl)

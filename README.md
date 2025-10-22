@@ -92,11 +92,13 @@ Run `bashvirt.sh -h` to get help info.
 usage: bashvirt.sh [actions]
 actions:
                             boot virtual machine normally without arguments
+    reset                   equals to press power reset button
+    tty <[1-7]>             send key combo ctrl-alt-f[1-7] to virtual machine
     usb-attach <device_id>  passthrough usb device to virtual machine
     usb-detach <device_id>  detach usb device
     usb-list                list attached devices
     monitor-exec            send command to qemu monitor
-    monitor-connect         connect qemu monitor
+    monitor-conn            connect to qemu monitor, interactive mode
     -h, --help, help        help info
     tpl                     print template
 device_id:
