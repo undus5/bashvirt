@@ -49,46 +49,46 @@ _vmname=$(basename "${_vmdir}")
 # Disk Image
 #################################################################################
 
-[[ -z "${_init_storage}" ]] && _init_storage=120G
-[[ -z "${_disk_image}" ]] && _disk_image=${_vmdir}/disk.qcow2
-[[ "${_disk_image##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
-[[ -f ${_disk_image} ]] || \
-    qemu-img create -f ${_disk_format} ${_disk_image} -o nocow=on ${_init_storage}
+[[ -z "${_storage}" ]] && _storage=120G
+[[ -z "${_disk}" ]] && _disk=${_vmdir}/disk.qcow2
+[[ "${_disk##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
+[[ -f ${_disk} ]] || \
+    qemu-img create -f ${_disk_format} ${_disk} -o nocow=on ${_storage}
 
-[[ -z "${_disk_drive}" ]] && _disk_drive="virtio"
-case "${_disk_drive}" in
+[[ -z "${_disk_adapter}" ]] && _disk_adapter="virtio"
+case "${_disk_adapter}" in
     virtio)
-        _diskdev="virtio-blk-pci"
+        _disk_model="virtio-blk-pci"
         ;;
     sata)
-        _diskdev="ide-hd"
+        _disk_model="ide-hd"
         ;;
     *)
-        eprintf "_disk_drive only support: <virtio|sata>\n"
+        eprintf "_disk_adapter only support: <virtio|sata>\n"
         ;;
 esac
 
 _disk_devices="\
-    -drive file=${_disk_image},if=none,id=disk0,format=${_disk_format} \
-    -device ${_diskdev},drive=disk0,bootindex=1"
+    -drive file=${_disk},if=none,id=disk0,format=${_disk_format} \
+    -device ${_disk_model},drive=disk0,bootindex=1"
 
-[[ "${_disk_drive}" == "sata" ]] && \
+[[ "${_disk_adapter}" == "sata" ]] && \
     _disk_devices="-device ahci,id=ahci0 ${_disk_devices},bus=ahci0.0"
 
 #################################################################################
 # CDROM
 #################################################################################
 
-if [[ -n ${_boot_iso} ]]; then
-    [[ -f ${_boot_iso} ]] || eprintf "file not found: ${_boot_iso}\n"
+if [[ -n ${_bootcd} ]]; then
+    [[ -f ${_bootcd} ]] || eprintf "file not found: ${_bootcd}\n"
     _bootcd="\
-        -drive file=${_boot_iso},media=cdrom,if=none,id=cd0 \
+        -drive file=${_bootcd},media=cdrom,if=none,id=cd0 \
         -device ide-cd,drive=cd0,bootindex=0"
 fi
 
-if [[ -n ${_nonboot_iso} ]]; then
-    [[ -f ${_nonboot_iso} ]] || eprintf "file not found: ${_nonboot_iso}\n"
-    _nonbootcd="-drive file=${_nonboot_iso},media=cdrom"
+if [[ -n ${_nonbootcd} ]]; then
+    [[ -f ${_nonbootcd} ]] || eprintf "file not found: ${_nonbootcd}\n"
+    _nonbootcd="-drive file=${_nonbootcd},media=cdrom"
 fi
 
 
@@ -96,9 +96,9 @@ fi
 # UEFI / BIOS
 #################################################################################
 
-[[ -z ${_boot_mode} ]] && _boot_mode="uefi"
+[[ -z ${_uefi} ]] && _uefi="yes"
 
-if [[ "${_boot_mode}" == "uefi" ]]; then
+if [[ "${_uefi}" == "yes" ]]; then
     _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
     _ovmf_var=${_vmdir}/OVMF_VARS.4m.fd
     [[ -f ${_ovmf_var} ]] || cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "${_vmdir}"
@@ -111,8 +111,8 @@ fi
 # Graphic Card
 #################################################################################
 
-[[ -z "${_gpu_drive}" ]] && _gpu_drive=std
-case "${_gpu_drive}" in
+[[ -z "${_gpu}" ]] && _gpu=std
+case "${_gpu}" in
     std)
         _gpu_device="-vga std"
         ;;
@@ -123,7 +123,7 @@ case "${_gpu_drive}" in
         _gpu_device="-device qxl-vga"
         ;;
     *)
-        eprintf "_gpu_drive only support: <std|virtio|qxl>\n"
+        eprintf "_gpu only support: <std|virtio|qxl>\n"
         ;;
 esac
 
@@ -136,9 +136,9 @@ _display_device="${_display},gl=on,full-screen=on"
 # Network Card
 #################################################################################
 
-[[ -z "${_nic_drive}" ]] && _nic_drive="virtio"
+[[ -z "${_nic_adapter}" ]] && _nic_adapter="virtio"
 
-case "${_nic_drive}" in
+case "${_nic_adapter}" in
     virtio)
         _nic_model="virtio-net-pci"
         ;;
@@ -146,7 +146,7 @@ case "${_nic_drive}" in
         _nic_model="e1000"
         ;;
     *)
-        eprintf "_nic_drive only support: <virtio|e1000>\n"
+        eprintf "_nic_adapter only support: <virtio|e1000>\n"
         ;;
 esac
 
@@ -165,7 +165,7 @@ bridge_check() {
         eprintf "${_br} not found in /etc/qemu/bridge.conf \n"
 }
 
-case "${_nic_mode}" in
+case "${_nic}" in
     ""|qemu)
         _nic_devices="-nic user,model=${_nic_model},mac=$(gen_mac_addr user)"
         ;;
@@ -190,7 +190,7 @@ case "${_nic_mode}" in
         _nic_devices=""
         ;;
     *)
-        eprintf "_nic_mode only support: <qemu|nat|lan|natlan|none>\n"
+        eprintf "_nic only support: <qemu|nat|lan|natlan|none>\n"
         ;;
 esac
 
@@ -243,40 +243,41 @@ kill_swtpm() {
 }
 
 #################################################################################
-# memory, virtiofsd
+# memory, virtiofs
 #################################################################################
 
 [[ -z "${_mem}" ]] && _mem=2G
 [[ -z "${_guest_uid}" ]] && _guest_uid=1000
 [[ -z "${_guest_gid}" ]] && _guest_gid=1000
 
-_virtiofsd_exec=/usr/lib/virtiofsd
-_virtiofsd_sock=${_vmdir}/virtiofsd.sock
-_virtiofsd_pidf=${_virtiofsd_sock}.pid
-_virtiofsd_pid=$([[ -f ${_virtiofsd_pidf} ]] && cat ${_virtiofsd_pidf})
+_viofs_bin=virtiofsd
+_viofs_exec=/usr/lib/${_viofs_bin}
+_viofs_sock=${_vmdir}/${_viofs_bin}.sock
+_viofs_pidf=${_viofs_sock}.pid
+_viofs_pid=$([[ -f ${_viofs_pidf} ]] && cat ${_viofs_pidf})
 
 
-[[ -n "${_shared_dir}" && -d "${_shared_dir}" && -f ${_virtiofsd_exec} ]] && \
-    _virtiofsd_devices="\
+[[ -n "${_viofsdir}" && -d "${_viofsdir}" && -f ${_viofs_exec} ]] && \
+    _viofs_devices="\
         -object memory-backend-memfd,id=mem,size=${_mem},share=on \
         -numa node,memdev=mem \
-        -chardev socket,id=charvirtiofs,path=${_virtiofsd_sock} \
-        -device vhost-user-fs-pci,chardev=charvirtiofs,tag=virtiofs"
+        -chardev socket,id=viofsdev,path=${_viofs_sock} \
+        -device vhost-user-fs-pci,chardev=viofsdev,tag=virtiofs"
 
-is_pid_virtiofsd() {
-    ps -o command= -p ${1} | grep -q virtiofsd
+is_pid_viofs() {
+    ps -o command= -p ${1} | grep -q ${_viofs_bin}
 }
 
-init_virtiofsd() {
-    if [[ -n "${_shared_dir}" ]]; then
-        [[ -d "${_shared_dir}" ]] || eprintf "dir not found: ${_shared_dir}\n"
-        [[ -f "${_virtiofsd_exec}" ]] || eprintf "command not found: ${_virtiofsd_exec}\n"
-        if [[ -z "${_virtiofsd_pid}" ]] || [[ ! $(is_pid_virtiofsd "${_virtiofsd_pid}") ]]; then
+init_viofs() {
+    if [[ -n "${_viofsdir}" ]]; then
+        [[ -d "${_viofsdir}" ]] || eprintf "dir not found: ${_viofsdir}\n"
+        [[ -f "${_viofs_exec}" ]] || eprintf "command not found: ${_viofs_exec}\n"
+        if [[ -z "${_viofs_pid}" ]] || [[ ! $(is_pid_viofs "${_viofs_pid}") ]]; then
             _host_uid=$(id -u)
             _host_gid=$(id -g)
-            ${_virtiofsd_exec} \
-            --socket-path ${_virtiofsd_sock} \
-            --shared-dir "${_shared_dir}" \
+            ${_viofs_exec} \
+            --socket-path ${_viofs_sock} \
+            --shared-dir "${_viofsdir}" \
             --sandbox namespace \
             --translate-uid host:${_host_uid}:${_guest_uid}:1 \
             --translate-gid host:${_host_gid}:${_guest_gid}:1 \
@@ -287,10 +288,10 @@ init_virtiofsd() {
     fi
 }
 
-kill_virtiofsd() {
-    [[ -f ${_virtiofsd_pidf} ]] && \
-        $(is_pid_virtiofsd $(cat ${_virtiofsd_pidf})) && \
-        kill -9 $(cat ${_virtiofsd_pidf})
+kill_viofs() {
+    [[ -f ${_viofs_pidf} ]] && \
+        $(is_pid_viofs $(cat ${_viofs_pidf})) && \
+        kill -9 $(cat ${_viofs_pidf})
 }
 
 #################################################################################
@@ -305,7 +306,7 @@ _monitor_sock=${_vmdir}/monitor.sock
 
 _qemu_options="\
     -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} \
-    -m ${_mem} ${_virtiofsd_devices} \
+    -m ${_mem} ${_viofs_devices} \
     -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0 \
     -monitor unix:${_monitor_sock},server,nowait \
     ${_gpu_device} -display ${_display_device} \
@@ -319,13 +320,13 @@ _qemu_options="\
 
 qemu_deps_prepare() {
     [[ "${_tpm}" == "yes" ]] && init_swtpm
-    init_virtiofsd
+    init_viofs
     return 0
 }
 
 qemu_err_fallback() {
     [[ "${_tpm}" == "yes" ]] && kill_swtpm
-    kill_virtiofsd
+    kill_viofs
     return 0
 }
 

@@ -4,16 +4,16 @@
 _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 
 # boot from iso
-#_boot_iso=path/to/windows.iso
+#_bootcd=path/to/windows.iso
 
 # for non-boot iso:
-#_nonboot_iso=path/to/virtio.iso
+#_nonbootcd=path/to/virtio.iso
 
 # shared folder between host and guest (virtiofs)
-#_shared_dir=path/to
+#_viofsdir=path/to
 
 # graphic card, [std|virtio|qxl], default is std
-#_gpu_drive=virtio
+#_gpu=virtio
 
 # display mode [sdl|gtk], default is sdl
 #_display=gtk
@@ -25,11 +25,11 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # memory, default is 2G
 #_mem=4G
 
-# initial storage size, default is 120G
-#_init_storage=80G
+# initial disk size, default is 120G
+#_storage=80G
 
 # network cards mode, [qemu|nat|lan|natlan|none], default is qemu
-#_nic_mode=nat
+#_nic=nat
 
 # enable hyper-v enlightenments for windows guest, [no|yes], default is no
 #_hyperv=yes
@@ -37,17 +37,17 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # enable tpm [no|yes], default is no
 #_tpm=yes
 
-# boot mode [uefi|bios], default is uefi
-#_boot_mode=bios
+# uefi boot mode [yes|no], default is yes
+#_uefi=no
 
 # disk image file, default is ${_vmdir}/disk.qcow2, auto created if not exists
-#_disk_image=${_vmdir}/disk.qcow2
+#_disk=${_vmdir}/disk.qcow2
 
 # disk drive [virtio|sata], default is virtio
-#_disk_drive=sata
+#_disk_adapter=sata
 
 # network drive [virtio|e1000], default is virtio
-#_nic_drive=e1000
+#_nic_adapter=e1000
 
 # enable if linux guest's uid/gid are not 1000 (virtiofs)
 #_guest_uid=1000

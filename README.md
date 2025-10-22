@@ -48,14 +48,14 @@ _vmdir=~/vms/win11
 
 _cpus=4
 _mem=8G
-_init_storage=80G
-_boot_mode=uefi
+_storage=80G
+_uefi=yes
 _hyperv=yes
 _tpm=yes
-_disk_drive=virtio
-_nic_drive=virtio
-_boot_iso=~/Downloads/win11.iso
-_nonboot_iso=~/Downloads/virtio.iso
+_disk_adapter=virtio
+_nic_adapter=virtio
+_bootcd=~/Downloads/win11.iso
+_nonbootcd=~/Downloads/virtio.iso
 
 source ~/bashvirt/bashvirt.sh
 ```
@@ -75,9 +75,9 @@ again, comment out the iso images part, or it would boot from iso every time:
 ```
 ...
 
-#_boot_iso=~/Downloads/win11.iso
-#_nonboot_iso=~/Downloads/virtio.iso
-_gpu_drive=virtio
+#_bootcd=~/Downloads/win11.iso
+#_nonbootcd=~/Downloads/virtio.iso
+_gpu=virtio
 
 ...
 ```
