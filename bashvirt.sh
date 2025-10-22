@@ -47,11 +47,11 @@ _vmname=$(basename "${_vmdir}")
 # Disk Image
 #################################################################################
 
-[[ -z "${_storage}" ]] && _storage=120G
+[[ -z "${_init_storage}" ]] && _init_storage=120G
 [[ -z "${_disk_image}" ]] && _disk_image=${_vmdir}/disk.qcow2
 [[ "${_disk_image##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
 [[ -f ${_disk_image} ]] || \
-    qemu-img create -f ${_disk_format} ${_disk_image} -o nocow=on ${_storage}
+    qemu-img create -f ${_disk_format} ${_disk_image} -o nocow=on ${_init_storage}
 
 [[ -z "${_disk_drive}" ]] && _disk_drive="virtio"
 case "${_disk_drive}" in
@@ -214,7 +214,7 @@ _tpm_sock=${_vmdir}/swtpm.sock
 _tpm_pidf=${_tpm_sock}.pid
 _tpm_pid=$([[ -f ${_tpm_pidf} ]] && cat ${_tpm_pidf})
 
-if [[ "${_tpm_on}" == "yes" ]]; then
+if [[ "${_tpm}" == "yes" ]]; then
     _tpm_devices="\
         -chardev socket,id=chartpm,path=${_tpm_sock} \
         -tpmdev emulator,id=tpm0,chardev=chartpm -device tpm-tis,tpmdev=tpm0"
@@ -316,13 +316,13 @@ _qemu_options="\
 #################################################################################
 
 qemu_deps_prepare() {
-    [[ "${_tpm_on}" == "yes" ]] && init_swtpm
+    [[ "${_tpm}" == "yes" ]] && init_swtpm
     init_virtiofsd
     return 0
 }
 
 qemu_err_fallback() {
-    [[ "${_tpm_on}" == "yes" ]] && kill_swtpm
+    [[ "${_tpm}" == "yes" ]] && kill_swtpm
     kill_virtiofsd
     return 0
 }

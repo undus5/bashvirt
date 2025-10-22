@@ -48,10 +48,10 @@ _vmdir=~/vms/win11
 
 _cpus=4
 _mem=8G
-_storage=80G
+_init_storage=80G
 _boot_mode=uefi
 _hyperv=yes
-_tpm_on=yes
+_tpm=yes
 _disk_drive=virtio
 _nic_drive=virtio
 _boot_iso=~/Downloads/win11.iso

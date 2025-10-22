@@ -25,8 +25,8 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # memory, default is 2G
 #_mem=4G
 
-# storage size, default is 120G
-#_storage=80G
+# initial storage size, default is 120G
+#_init_storage=80G
 
 # network cards mode, [qemu|nat|lan|natlan|none], default is qemu
 #_nic_mode=nat
@@ -34,8 +34,8 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # enable hyper-v enlightenments for windows guest, [no|yes], default is no
 #_hyperv=yes
 
-# enable tpm2 [no|yes], default is no
-#_tpm_on=yes
+# enable tpm [no|yes], default is no
+#_tpm=yes
 
 # boot mode [uefi|bios], default is uefi
 #_boot_mode=bios
