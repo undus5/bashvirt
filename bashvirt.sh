@@ -102,7 +102,7 @@ if [[ "${_uefi}" == "yes" ]]; then
     _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
     _ovmf_var=${_vmdir}/OVMF_VARS.4m.fd
     [[ -f ${_ovmf_var} ]] || cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "${_vmdir}"
-    _uefi_drives="\
+    _uefi_firms="\
         -drive if=pflash,format=raw,readonly=on,file=${_ovmf_ro} \
         -drive if=pflash,format=raw,file=${_ovmf_var}"
 fi
@@ -129,7 +129,7 @@ esac
 
 [[ -z "${_display}" ]] && _display=sdl
 [[ "${_display}" != "sdl" ]] && _display=gtk
-_display_device="${_display},gl=on,full-screen=on"
+_display_device="-display ${_display},gl=on,full-screen=on"
 # [[ "${_display}" == "gtk" ]] && _display_device+=" -usb -device usb-tablet"
 
 #################################################################################
@@ -302,17 +302,18 @@ kill_viofs() {
 [[ -z "${_cpus}" ]] && _cpus=2
 
 _qemu_pidf=${_vmdir}/qemu.pid
-_monitor_sock=${_vmdir}/monitor.sock
+_monitor_sock=${_vmdir}/qemu-monitor.sock
+
+_audio_devices="-device ich9-intel-hda"
+_audio_devices+=" -audiodev pipewire,id=snd0 -device hda-output,audiodev=snd0"
 
 _qemu_options="\
-    -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} \
-    -m ${_mem} ${_viofs_devices} \
-    -audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-output,audiodev=snd0 \
-    -monitor unix:${_monitor_sock},server,nowait \
-    ${_gpu_device} -display ${_display_device} \
-    ${_uefi_drives} ${_tpm_devices} \
-    ${_disk_devices} ${_bootcd} ${_nonbootcd} ${_nic_devices} ${_rtc} \
-    -pidfile ${_qemu_pidf}"
+    -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} -m ${_mem} \
+    -pidfile ${_qemu_pidf} -monitor unix:${_monitor_sock},server,nowait \
+    ${_uefi_firms} ${_tpm_devices} \
+    ${_gpu_device} ${_display_device} ${_audio_devices} ${_rtc} \
+    ${_disk_devices} ${_nic_devices} \
+    ${_bootcd} ${_nonbootcd} ${_viofs_devices}"
 
 #################################################################################
 # QEMU start
