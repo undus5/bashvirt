@@ -102,6 +102,6 @@ actions:
     -h, --help, help        help info
     tpl                     print template
 device_id:
-    looks like "1d6b:0002", get from command `lsusb`
+    looks like "1d6b:0002", get from command \`lsusb\` from 'usbutils' package
 ```
 
