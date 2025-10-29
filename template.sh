@@ -4,10 +4,10 @@
 _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 
 # boot from iso
-#_bootcd=path/to/windows.iso
+#_bootiso=path/to/windows.iso
 
 # for non-boot iso:
-#_nonbootcd=path/to/virtio.iso
+#_nonbootiso=path/to/virtio.iso
 
 # shared folder between host and guest (virtiofs)
 #_viofsdir=path/to

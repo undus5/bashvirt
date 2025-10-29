@@ -54,8 +54,8 @@ _hyperv=yes
 _tpm=yes
 _disk_adapter=virtio
 _nic_adapter=virtio
-_bootcd=~/Downloads/win11.iso
-_nonbootcd=~/Downloads/virtio.iso
+_bootiso=~/Downloads/win11.iso
+_nonbootiso=~/Downloads/virtio.iso
 
 source ~/bashvirt/bashvirt.sh
 ```
@@ -75,8 +75,8 @@ again, comment out the iso images part, or it would boot from iso every time:
 ```
 ...
 
-#_bootcd=~/Downloads/win11.iso
-#_nonbootcd=~/Downloads/virtio.iso
+#_bootiso=~/Downloads/win11.iso
+#_nonbootiso=~/Downloads/virtio.iso
 _gpu=virtio
 
 ...

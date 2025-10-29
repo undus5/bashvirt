@@ -79,16 +79,16 @@ _disk_devices="\
 # CDROM
 #################################################################################
 
-if [[ -n ${_bootcd} ]]; then
-    [[ -f ${_bootcd} ]] || eprintf "file not found: ${_bootcd}\n"
+if [[ -n ${_bootiso} ]]; then
+    [[ -f ${_bootiso} ]] || eprintf "file not found: ${_bootiso}\n"
     _bootcd="\
-        -drive file=${_bootcd},media=cdrom,if=none,id=cd0 \
+        -drive file=${_bootiso},media=cdrom,if=none,id=cd0 \
         -device ide-cd,drive=cd0,bootindex=0"
 fi
 
-if [[ -n ${_nonbootcd} ]]; then
-    [[ -f ${_nonbootcd} ]] || eprintf "file not found: ${_nonbootcd}\n"
-    _nonbootcd="-drive file=${_nonbootcd},media=cdrom"
+if [[ -n ${_nonbootiso} ]]; then
+    [[ -f ${_nonbootiso} ]] || eprintf "file not found: ${_nonbootiso}\n"
+    _nonbootcd="-drive file=${_nonbootiso},media=cdrom"
 fi
 
 
