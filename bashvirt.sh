@@ -99,7 +99,8 @@ fi
 [[ -z ${_uefi} ]] && _uefi="yes"
 
 if [[ "${_uefi}" == "yes" ]]; then
-    _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
+    # _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
+    _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.4m.fd
     _ovmf_var=${_vmdir}/OVMF_VARS.4m.fd
     [[ -f ${_ovmf_var} ]] || cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "${_vmdir}"
     _uefi_firms="\
@@ -246,7 +247,7 @@ kill_swtpm() {
 # memory, virtiofs
 #################################################################################
 
-[[ -z "${_mem}" ]] && _mem=2G
+[[ -z "${_mem}" ]] && _mem=4G
 [[ -z "${_guest_uid}" ]] && _guest_uid=1000
 [[ -z "${_guest_gid}" ]] && _guest_gid=1000
 

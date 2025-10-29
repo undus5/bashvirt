@@ -22,8 +22,8 @@ _vmdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 # check physical cpu info with command `lscpu`, or `cat /proc/cpuinfo`
 #_cpus=4
 
-# memory, default is 2G
-#_mem=4G
+# memory, default is 4G
+#_mem=8G
 
 # initial disk size, default is 120G
 #_storage=80G
