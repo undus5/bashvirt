@@ -31,10 +31,6 @@ $ cd ~/vms/win11
 there are detailed comments for all options:
 
 ```
-$ cp ~/bashvirt/template.sh ~/vms/win11/run.sh
-
-or
-
 $ bashvirt.sh tpl > ~/vms/win11/run.sh
 ```
 
