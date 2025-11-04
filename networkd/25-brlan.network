@@ -5,3 +5,7 @@ RequiredForOnline=routable
 [Network]
 DHCP=yes
 IPv4Forwarding=yes
+[DHCPv4]
+RouteMetric=100
+[IPV6AcceptRA]
+RouteMetric=100
