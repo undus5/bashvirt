@@ -123,13 +123,13 @@ _vmname=$(basename "${_vmdir}")
 # Disk Image
 #################################################################################
 
-[[ -z "${_storage}" ]] && _storage=120G
-[[ -z "${_disk}" ]] && _disk=${_vmdir}/disk.qcow2
+_storage=${_storage:-120G}
+_disk=${_disk:-${_vmdir}/disk.qcow2}
 [[ "${_disk##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
 [[ -f ${_disk} ]] || \
     qemu-img create -f ${_disk_format} ${_disk} -o nocow=on ${_storage}
 
-[[ -z "${_disk_adapter}" ]] && _disk_adapter="virtio"
+_disk_adapter=${_disk_adapter:-virtio}
 case "${_disk_adapter}" in
     virtio)
         _disk_model="virtio-blk-pci"
@@ -170,8 +170,7 @@ fi
 # UEFI / BIOS
 #################################################################################
 
-[[ -z ${_uefi} ]] && _uefi="yes"
-
+_uefi=${_uefi:-yes}
 if [[ "${_uefi}" == "yes" ]]; then
     # _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
     _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.4m.fd
@@ -186,13 +185,13 @@ fi
 # Graphic Card
 #################################################################################
 
+_resolution=${_resolution:-1920x1080}
 _resolution=$(echo "${_resolution}" | tr '[:upper:]' '[:lower:]')
-[[ -z "${_resolution}" ]] && _resolution=1920x1080
 [[ "${_resolution}" =~ ^[1-9]+[0-9]+x[1-9]+[0-9]+$ ]] || eprintf "invalid resolution ${_resolution}\n"
 IFS=x read -ra _resarr <<< "${_resolution}"
 _resargs="xres=${_resarr[0]},yres=${_resarr[1]}"
 
-[[ -z "${_gpu}" ]] && _gpu=std
+_gpu=${_gpu:-std}
 case "${_gpu}" in
     std)
         # _gpu_device="-vga std"
@@ -209,8 +208,8 @@ case "${_gpu}" in
         ;;
 esac
 
-[[ -z "${_display}" ]] && _display=sdl
-[[ "${_display}" != "sdl" ]] && _display=gtk
+_display=${_display:-sdl}
+[[ "${_display}" == "sdl" ]] || _display=gtk
 _display_device="-display ${_display},gl=on,full-screen=on"
 # [[ "${_display}" == "gtk" ]] && _display_device+=" -usb -device usb-tablet"
 
@@ -218,8 +217,7 @@ _display_device="-display ${_display},gl=on,full-screen=on"
 # Network Card
 #################################################################################
 
-[[ -z "${_nic_adapter}" ]] && _nic_adapter="virtio"
-
+_nic_adapter=${_nic_adapter:-virtio}
 case "${_nic_adapter}" in
     virtio)
         _nic_model="virtio-net-pci"
@@ -239,8 +237,7 @@ gen_mac_addr() {
 }
 
 bridge_check() {
-    local _br=${1}
-    [[ -z "${_br}" ]] && _br=brlan
+    local _br=${1:-brlan}
     ip link show | grep ${_br} &>/dev/null || \
         eprintf "network bridge not found: ${_br}\n"
     grep -q "allow ${_br}" /etc/qemu/bridge.conf || \
@@ -329,9 +326,9 @@ kill_swtpm() {
 # memory, virtiofs
 #################################################################################
 
-[[ -z "${_mem}" ]] && _mem=4G
-[[ -z "${_guest_uid}" ]] && _guest_uid=1000
-[[ -z "${_guest_gid}" ]] && _guest_gid=1000
+_mem=${_mem:-4G}
+_guest_uid=${_guest_uid:-1000}
+_guest_gid=${_guest_gid:-1000}
 
 _viofs_bin=virtiofsd
 _viofs_exec=/usr/lib/${_viofs_bin}
@@ -382,7 +379,7 @@ kill_viofs() {
 #################################################################################
 
 # check CPU cores with `lscpu` command, or `cat /etc/proc/cpuinfo`
-[[ -z "${_cpus}" ]] && _cpus=2
+_cpus=${_cpus:-2}
 
 _qemu_pidf=${_vmdir}/qemu.pid
 _monitor_sock=${_vmdir}/qemu-monitor.sock
