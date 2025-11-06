@@ -48,8 +48,11 @@ _vmdir=\$(dirname \$(realpath \${BASH_SOURCE[0]}))
 # graphic card, [std|virtio|qxl], default is std
 #_gpu=virtio
 
-# display mode [sdl|gtk], default is sdl
-#_display=gtk
+# network cards mode, [qemu|nat|lan|natlan|none], default is qemu
+#_nic=nat
+
+# uefi boot mode [yes|no], default is yes
+#_uefi=no
 
 # cpus, default is 2
 # check physical cpu info with command \`lscpu\`, or \`cat /proc/cpuinfo\`
@@ -61,17 +64,17 @@ _vmdir=\$(dirname \$(realpath \${BASH_SOURCE[0]}))
 # initial disk size, default is 120G
 #_storage=80G
 
-# network cards mode, [qemu|nat|lan|natlan|none], default is qemu
-#_nic=nat
-
 # enable hyper-v enlightenments for windows guest, [no|yes], default is no
 #_hyperv=yes
 
 # enable tpm [no|yes], default is no
 #_tpm=yes
 
-# uefi boot mode [yes|no], default is yes
-#_uefi=no
+# display mode [sdl|gtk], default is sdl
+#_display=gtk
+
+# resolution, default is 1920x1080
+#_resolution=2560x1440
 
 # disk image file, default is \${_vmdir}/disk.qcow2, auto created if not exists
 #_disk=\${_vmdir}/disk.qcow2
@@ -183,16 +186,23 @@ fi
 # Graphic Card
 #################################################################################
 
+_resolution=$(echo "${_resolution}" | tr '[:upper:]' '[:lower:]')
+[[ -z "${_resolution}" ]] && _resolution=1920x1080
+[[ "${_resolution}" =~ ^[1-9]+[0-9]+x[1-9]+[0-9]+$ ]] || eprintf "invalid resolution ${_resolution}\n"
+IFS=x read -ra _resarr <<< "${_resolution}"
+_resargs="xres=${_resarr[0]},yres=${_resarr[1]}"
+
 [[ -z "${_gpu}" ]] && _gpu=std
 case "${_gpu}" in
     std)
-        _gpu_device="-vga std"
+        # _gpu_device="-vga std"
+        _gpu_device="-device VGA,${_resargs}"
         ;;
     virtio)
-        _gpu_device="-device virtio-vga-gl"
+        _gpu_device="-device virtio-vga-gl,${_resargs}"
         ;;
     qxl)
-        _gpu_device="-device qxl-vga"
+        _gpu_device="-device qxl-vga,${_resargs}"
         ;;
     *)
         eprintf "_gpu only support: <std|virtio|qxl>\n"
@@ -272,6 +282,7 @@ esac
 
 _cpu_model="host"
 if [[ -n "${_hyperv}" && "${_hyperv}" == "yes" ]]; then
+    _cpu_model+=",kvm=off"
     _cpu_model+=",hv_relaxed,hv_vapic,hv_spinlocks=0xfff"
     _cpu_model+=",hv_vpindex,hv_synic,hv_time,hv_stimer"
     _cpu_model+=",hv_tlbflush,hv_tlbflush_ext,hv_ipi,hv_stimer_direct"
