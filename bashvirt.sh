@@ -45,8 +45,9 @@ _vmdir=\$(dirname \$(realpath \${BASH_SOURCE[0]}))
 # shared folder between host and guest (virtiofs)
 #_viofsdir=path/to
 
-# graphic card, [std|virtio|qxl], default is std
+# graphic card, [std|virtio|qxl|pci_addr], default is std
 #_gpu=virtio
+#_gpu=03:00.0
 
 # network cards mode, [qemu|nat|lan|natlan|none], default is qemu
 #_nic=nat
@@ -126,8 +127,9 @@ _vmname=$(basename "${_vmdir}")
 _storage=${_storage:-120G}
 _disk=${_disk:-${_vmdir}/disk.qcow2}
 [[ "${_disk##*.}" == "qcow2" ]] && _disk_format=qcow2 || _disk_format=raw
-[[ -f ${_disk} ]] || \
+if [[ ! -f ${_disk} ]]; then
     qemu-img create -f ${_disk_format} ${_disk} -o nocow=on ${_storage}
+fi
 
 _disk_adapter=${_disk_adapter:-virtio}
 case "${_disk_adapter}" in
@@ -142,27 +144,32 @@ case "${_disk_adapter}" in
         ;;
 esac
 
-_disk_devices="\
-    -drive file=${_disk},if=none,id=disk0,format=${_disk_format} \
-    -device ${_disk_model},drive=disk0,bootindex=1"
+_disk_devices="-drive file=${_disk},if=none,id=disk0,format=${_disk_format}"
+_disk_devices+=" -device ${_disk_model},drive=disk0,bootindex=1"
 
-[[ "${_disk_adapter}" == "sata" ]] && \
+if [[ "${_disk_adapter}" == "sata" ]]; then
     _disk_devices="-device ahci,id=ahci0 ${_disk_devices},bus=ahci0.0"
+fi
 
 #################################################################################
 # CDROM
 #################################################################################
 
-if [[ -n ${_bootiso} ]]; then
-    [[ -f ${_bootiso} ]] || eprintf "file not found: ${_bootiso}\n"
-    _bootcd="\
-        -drive file=${_bootiso},media=cdrom,if=none,id=cd0 \
-        -device ide-cd,drive=cd0,bootindex=0"
+if [[ -n "${_bootiso}" ]]; then
+    if [[ -f "${_bootiso}" ]]; then
+        _bootcd="-drive file=${_bootiso},media=cdrom,if=none,id=cd0"
+        _bootcd+=" -device ide-cd,drive=cd0,bootindex=0"
+    else
+       eprintf "file not found: ${_bootiso}\n"
+    fi
 fi
 
-if [[ -n ${_nonbootiso} ]]; then
-    [[ -f ${_nonbootiso} ]] || eprintf "file not found: ${_nonbootiso}\n"
-    _nonbootcd="-drive file=${_nonbootiso},media=cdrom"
+if [[ -n "${_nonbootiso}" ]]; then
+    if [[ -f "${_nonbootiso}" ]]; then
+        _nonbootcd="-drive file=${_nonbootiso},media=cdrom"
+    else
+        eprintf "file not found: ${_nonbootiso}\n"
+    fi
 fi
 
 
@@ -175,10 +182,11 @@ if [[ "${_uefi}" == "yes" ]]; then
     # _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd
     _ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.4m.fd
     _ovmf_var=${_vmdir}/OVMF_VARS.4m.fd
-    [[ -f ${_ovmf_var} ]] || cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "${_vmdir}"
-    _uefi_firms="\
-        -drive if=pflash,format=raw,readonly=on,file=${_ovmf_ro} \
-        -drive if=pflash,format=raw,file=${_ovmf_var}"
+    if [[ ! -f ${_ovmf_var} ]]; then
+        cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "${_vmdir}"
+    fi
+    _uefi_firms="-drive if=pflash,format=raw,readonly=on,file=${_ovmf_ro}"
+    _uefi_firms+=" -drive if=pflash,format=raw,file=${_ovmf_var}"
 fi
 
 #################################################################################
@@ -187,26 +195,27 @@ fi
 
 _resolution=${_resolution:-1920x1080}
 _resolution=$(echo "${_resolution}" | tr '[:upper:]' '[:lower:]')
-[[ "${_resolution}" =~ ^[1-9]+[0-9]+x[1-9]+[0-9]+$ ]] || eprintf "invalid resolution ${_resolution}\n"
+
+if [[ ! "${_resolution}" =~ ^[1-9]+[0-9]+x[1-9]+[0-9]+$ ]]; then
+    eprintf "invalid resolution ${_resolution}\n"
+fi
+
 IFS=x read -ra _resarr <<< "${_resolution}"
 _resargs="xres=${_resarr[0]},yres=${_resarr[1]}"
+_vga="-device VGA,${_resargs}"
 
 _gpu=${_gpu:-std}
-case "${_gpu}" in
-    std)
-        # _gpu_device="-vga std"
-        _gpu_device="-device VGA,${_resargs}"
-        ;;
-    virtio)
-        _gpu_device="-device virtio-vga-gl,${_resargs}"
-        ;;
-    qxl)
-        _gpu_device="-device qxl-vga,${_resargs}"
-        ;;
-    *)
-        eprintf "_gpu only support: <std|virtio|qxl>\n"
-        ;;
-esac
+if [[ "${_gpu}" == "std" ]]; then
+    _gpu_device="${_vga}"
+elif [[ "${_gpu}" =~ ^[0-9a-f]{2}:[0-9a-f]{2}.[0-9a-f]$ ]]; then
+    _gpu_device="${_vga} -device vfio-pci,host=${_gpu}"
+elif [[ "${_gpu}" == "virtio" ]]; then
+    _gpu_device="-device virtio-vga-gl,${_resargs}"
+elif [[ "${_gpu}" == "qxl" ]]; then
+    _gpu_device="-device qxl-vga,${_resargs}"
+else
+    eprintf "_gpu only support: <std|virtio|qxl>\n"
+fi
 
 _display=${_display:-sdl}
 [[ "${_display}" == "sdl" ]] || _display=gtk
@@ -231,17 +240,18 @@ case "${_nic_adapter}" in
 esac
 
 gen_mac_addr() {
-    printf "${_vmname}${1}" | sha256sum |\
-        awk '{ printf "52:54:%s:%s:%s:%s\n", \
-        substr($0,1,2), substr($0,3,2), substr($0,5,2), substr($0,7,2) }'
+    local _hash=$(printf "${_vmname}${1}" | sha256sum)
+    echo "52:54:${_hash:0:2}:${_hash:2:2}:${_hash:4:2}:${_hash:6:2}"
 }
 
 bridge_check() {
     local _br=${1:-brlan}
-    ip link show | grep ${_br} &>/dev/null || \
+    if ! ip link show | grep -q "${_br}"; then
         eprintf "network bridge not found: ${_br}\n"
-    grep -q "allow ${_br}" /etc/qemu/bridge.conf || \
+    fi
+    if ! grep -q "allow ${_br}" /etc/qemu/bridge.conf; then
         eprintf "${_br} not found in /etc/qemu/bridge.conf \n"
+    fi
 }
 
 case "${_nic}" in
@@ -250,20 +260,17 @@ case "${_nic}" in
         ;;
     nat)
         bridge_check brnat
-        _nic_devices="\
-            -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat)"
+        _nic_devices="-nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat)"
         ;;
     lan)
         bridge_check brlan
-        _nic_devices="\
-            -nic bridge,br=brlan,model=${_nic_model},mac=$(gen_mac_addr brlan)"
+        _nic_devices="-nic bridge,br=brlan,model=${_nic_model},mac=$(gen_mac_addr brlan)"
         ;;
     natlan)
         bridge_check brnat
         bridge_check brlan
-        _nic_devices="\
-            -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat) \
-            -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brlan)"
+        _nic_devices="-nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat)"
+        _nic_devices+=" -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brlan)"
         ;;
     none)
         _nic_devices=""
@@ -274,18 +281,23 @@ case "${_nic}" in
 esac
 
 #################################################################################
-# Hyper-V Enlightenment
+# CPU Model
 #################################################################################
 
 _cpu_model="host"
+
+# Enable topoext for AMD CPU
+_isamd=$(lscpu | grep "AuthenticAMD")
+[[ -n "${_isamd}" ]] && _cpu_model+=",topoext=on"
+
+# Hyper-V Enlightenment
 if [[ -n "${_hyperv}" && "${_hyperv}" == "yes" ]]; then
-    _cpu_model+=",kvm=off"
     _cpu_model+=",hv_relaxed,hv_vapic,hv_spinlocks=0xfff"
     _cpu_model+=",hv_vpindex,hv_synic,hv_time,hv_stimer"
     _cpu_model+=",hv_tlbflush,hv_tlbflush_ext,hv_ipi,hv_stimer_direct"
     _cpu_model+=",hv_runtime,hv_frequencies,hv_reenlightenment"
     _cpu_model+=",hv_avic,hv_xmm_input"
-    _rtc="-rtc base=localtime"
+    _cpu_model+=" -rtc base=localtime"
 fi
 
 #################################################################################
@@ -297,9 +309,8 @@ _tpm_pidf=${_tpm_sock}.pid
 _tpm_pid=$([[ -f ${_tpm_pidf} ]] && cat ${_tpm_pidf})
 
 if [[ "${_tpm}" == "yes" ]]; then
-    _tpm_devices="\
-        -chardev socket,id=chartpm,path=${_tpm_sock} \
-        -tpmdev emulator,id=tpm0,chardev=chartpm -device tpm-tis,tpmdev=tpm0"
+    _tpm_devices="-chardev socket,id=chartpm,path=${_tpm_sock}"
+    _tpm_devices+=" -tpmdev emulator,id=tpm0,chardev=chartpm -device tpm-tis,tpmdev=tpm0"
 fi
 
 is_pid_swtpm() {
@@ -309,17 +320,16 @@ is_pid_swtpm() {
 init_swtpm() {
     command -v swtpm &>/dev/null || eprintf "swtpm: command not found\n"
     if [[ -z "${_tpm_pid}" ]] || [[ ! $(is_pid_swtpm "${_tpm_pid}") ]]; then
-        swtpm socket --tpm2 \
-            --tpmstate dir=${_vmdir} \
+        swtpm socket --tpm2 --tpmstate dir=${_vmdir} \
             --ctrl type=unixio,path=${_tpm_sock} \
             --pid file=${_tpm_pidf} &
     fi
 }
 
 kill_swtpm() {
-    [[ -f ${_tpm_pidf} ]] && \
-        $(is_pid_swtpm $(cat ${_tpm_pidf})) && \
-        kill -9 $(cat ${_tpm_pidf})
+    if [[ -f ${_tpm_pidf} ]]; then
+        $(is_pid_swtpm $(cat ${_tpm_pidf})) && kill -9 $(cat ${_tpm_pidf})
+    fi
 }
 
 #################################################################################
@@ -337,12 +347,12 @@ _viofs_pidf=${_viofs_sock}.pid
 _viofs_pid=$([[ -f ${_viofs_pidf} ]] && cat ${_viofs_pidf})
 
 
-[[ -n "${_viofsdir}" && -d "${_viofsdir}" && -f ${_viofs_exec} ]] && \
-    _viofs_devices="\
-        -object memory-backend-memfd,id=mem,size=${_mem},share=on \
-        -numa node,memdev=mem \
-        -chardev socket,id=viofsdev,path=${_viofs_sock} \
-        -device vhost-user-fs-pci,chardev=viofsdev,tag=virtiofs"
+if [[ -n "${_viofsdir}" && -d "${_viofsdir}" && -f ${_viofs_exec} ]]; then
+    _viofs_devices="-object memory-backend-memfd,id=mem,size=${_mem},share=on"
+    _viofs_devices+=" -numa node,memdev=mem"
+    _viofs_devices+=" -chardev socket,id=viofsdev,path=${_viofs_sock}"
+    _viofs_devices+=" -device vhost-user-fs-pci,chardev=viofsdev,tag=virtiofs"
+fi
 
 is_pid_viofs() {
     ps -o command= -p ${1} | grep -q ${_viofs_bin}
@@ -355,23 +365,22 @@ init_viofs() {
         if [[ -z "${_viofs_pid}" ]] || [[ ! $(is_pid_viofs "${_viofs_pid}") ]]; then
             _host_uid=$(id -u)
             _host_gid=$(id -g)
-            ${_viofs_exec} \
-            --socket-path ${_viofs_sock} \
-            --shared-dir "${_viofsdir}" \
-            --sandbox namespace \
-            --translate-uid host:${_host_uid}:${_guest_uid}:1 \
-            --translate-gid host:${_host_gid}:${_guest_gid}:1 \
-            --translate-uid squash-guest:0:${_host_uid}:4294967295 \
-            --translate-gid squash-guest:0:${_host_gid}:4294967295 \
-            &
+            ${_viofs_exec} --sandbox namespace \
+                --socket-path ${_viofs_sock} \
+                --shared-dir "${_viofsdir}" \
+                --translate-uid host:${_host_uid}:${_guest_uid}:1 \
+                --translate-gid host:${_host_gid}:${_guest_gid}:1 \
+                --translate-uid squash-guest:0:${_host_uid}:4294967295 \
+                --translate-gid squash-guest:0:${_host_gid}:4294967295 \
+                &
         fi
     fi
 }
 
 kill_viofs() {
-    [[ -f ${_viofs_pidf} ]] && \
-        $(is_pid_viofs $(cat ${_viofs_pidf})) && \
-        kill -9 $(cat ${_viofs_pidf})
+    if [[ -f ${_viofs_pidf} ]]; then
+        $(is_pid_viofs $(cat ${_viofs_pidf})) && kill -9 $(cat ${_viofs_pidf})
+    fi
 }
 
 #################################################################################
@@ -387,13 +396,12 @@ _monitor_sock=${_vmdir}/qemu-monitor.sock
 _audio_devices="-device ich9-intel-hda"
 _audio_devices+=" -audiodev pipewire,id=snd0 -device hda-output,audiodev=snd0"
 
-_qemu_options="\
-    -enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} -m ${_mem} \
-    -pidfile ${_qemu_pidf} -monitor unix:${_monitor_sock},server,nowait \
-    ${_uefi_firms} ${_tpm_devices} \
-    ${_gpu_device} ${_display_device} ${_audio_devices} ${_rtc} \
-    ${_disk_devices} ${_nic_devices} \
-    ${_bootcd} ${_nonbootcd} ${_viofs_devices}"
+_qemu_options="-enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} -m ${_mem}"
+_qemu_options+=" -pidfile ${_qemu_pidf} -monitor unix:${_monitor_sock},server,nowait"
+_qemu_options+=" ${_uefi_firms} ${_tpm_devices}"
+_qemu_options+=" ${_disk_devices} ${_nic_devices}"
+_qemu_options+=" ${_bootcd} ${_nonbootcd} ${_viofs_devices}"
+_qemu_options+=" ${_gpu_device} ${_display_device} ${_audio_devices}"
 
 #################################################################################
 # QEMU start
@@ -414,7 +422,9 @@ qemu_err_fallback() {
 qemu_running_check() {
     [[ -f ${_qemu_pidf} ]] || return 0
     _proc_comm=$(cat ${_qemu_pidf} | xargs -I{} ps -o command= -p {})
-    [[ "${_proc_comm}" =~ "qemu-system-x86_64" ]] && eprintf "vm already running\n"
+    if [[ "${_proc_comm}" =~ "qemu-system-x86_64" ]]; then
+        eprintf "vm already running\n"
+    fi
 }
 
 qemu_start() {
@@ -433,25 +443,33 @@ monitor_connect() {
 }
 
 monitor_exec() {
-    [[ -S ${_monitor_sock} ]] && echo "${@}" | \
-        socat - UNIX-CONNECT:${_monitor_sock} | \
-        tail --lines=+2 | grep -v '^(qemu)'
+    local _result
+    if [[ -S ${_monitor_sock} ]]; then
+        _result=$(echo "${@}" | socat - UNIX-CONNECT:${_monitor_sock})
+        _result=$(echo "${_result}" | tail --lines=+2 | grep -v '^(qemu)')
+    fi
 }
 
 _id_pattern=^[0-9a-f]{4}:[0-9a-f]{4}$
 
 usb_attach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
-    [[ "${_devid}" =~ $_id_pattern ]] || eprintf "invalid device ID\n"
+    if [[ ! "${_devid}" =~ $_id_pattern ]]; then
+        eprintf "invalid device ID\n"
+    fi
     local _vendid=$(echo "${_devid}" | cut -d : -f 1)
     local _prodid=$(echo "${_devid}" | cut -d : -f 2)
-    monitor_exec \
-        "device_add usb-host,vendorid=0x${_vendid},productid=0x${_prodid},id=usb${_vendid}${_prodid}"
+    local _qexec="device_add usb-host"
+    _qexec+=",vendorid=0x${_vendid},productid=0x${_prodid}"
+    _qexec+=",id=usb${_vendid}${_prodid}"
+    monitor_exec "${_qexec}"
 }
 
 usb_detach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
-    [[ "${_devid}" =~ $_id_pattern ]] || eprintf "invalid device ID\n"
+    if [[ ! "${_devid}" =~ $_id_pattern ]]; then
+        eprintf "invalid device ID\n"
+    fi
     local _vendid=$(echo "${_devid}" | cut -d : -f 1)
     local _prodid=$(echo "${_devid}" | cut -d : -f 2)
     monitor_exec "device_del usb${_vendid}${_prodid}"
@@ -462,7 +480,9 @@ usb_list() {
 }
 
 switch_tty() {
-    [[ "${1}" =~ ^[1-7]$ ]] || eprintf "invalid tty number\n"
+    if [[ ! "${1}" =~ ^[1-7]$ ]]; then
+        eprintf "invalid tty number\n"
+    fi
     monitor_exec sendkey ctrl-alt-f${1}
 }
 

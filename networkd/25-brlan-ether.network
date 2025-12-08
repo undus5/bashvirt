@@ -1,4 +1,4 @@
 [Match]
-Name=enp42s0
+Name=en*
 [Network]
 Bridge=brlan
