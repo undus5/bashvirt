@@ -237,6 +237,7 @@ else
 fi
 
 _kvmfrid_pattern=^[0-9]{1}$
+_kvmfrfile=/dev/kvmfr${_kvmfrid}
 _spice_sock=${_vmdir}/spice.sock
 if [[ "${_kvmfrid}" =~ ${_kvmfrid_pattern} && "${_gpu}" =~ ${_pciaddr_pattern} ]]; then
     _kvmfrmem=$(cat /etc/modprobe.d/kvmfr.conf | cut -d'=' -f 2 | cut -d',' -f "$((_kvmfrid+1))")
@@ -244,7 +245,7 @@ if [[ "${_kvmfrid}" =~ ${_kvmfrid_pattern} && "${_gpu}" =~ ${_pciaddr_pattern} ]
     _spice_devices+=" -device virtio-serial-pci -chardev spicevmc,id=spicechar,name=vdagent"
     _spice_devices+=" -device virtserialport,chardev=spicechar,name=com.redhat.spice.0"
     _kvmfr_devices="-object memory-backend-file,id=looking-glass"
-    _kvmfr_devices+=",mem-path=/dev/kvmfr${_kvmfrid},size=${_kvmfrmem}M,share=yes"
+    _kvmfr_devices+=",mem-path=${_kvmfrfile},size=${_kvmfrmem}M,share=yes"
     _kvmfr_devices+=" -device ivshmem-plain,id=shmem0,memdev=looking-glass"
     _kvmfr_devices+=" -device virtio-keyboard -device virtio-mouse"
 else
@@ -552,7 +553,7 @@ case ${1} in
         switch_tty ${@}
         ;;
     lg)
-        looking-glass-client -p 0 -c ${_spice_sock}
+        looking-glass-client -p 0 -c ${_spice_sock} -f ${_kvmfrfile}
         ;;
     rdp)
         rdp_conn
