@@ -15,15 +15,18 @@ cat << EOB
 usage: $(basename $0) [actions]
 actions:
                             boot virtual machine normally without arguments
+    tpl                     print template
+    ls                      list running virtual machines
+    lg                      start looking-glass-client
     reset                   equals to press power reset button
-    tty <[1-7]>             send key combo ctrl-alt-f[1-7] to virtual machine
+    tty [1-7]               send key combo ctrl-alt-f[1-7] to virtual machine
+    mac                     return MAC addresses
+    monitor-exec            send command to qemu monitor
+    monitor-conn            connect to qemu monitor, interactive mode
     usb-attach <device_id>  passthrough usb device to virtual machine
     usb-detach <device_id>  detach usb device
     usb-list                list attached devices
-    monitor-exec            send command to qemu monitor
-    monitor-conn            connect to qemu monitor, interactive mode
     -h, --help, help        help info
-    tpl                     print template
 device_id:
     looks like "1d6b:0002", get from command \`lsusb\` from 'usbutils' package
 EOB
@@ -49,6 +52,13 @@ _vmdir=\$(dirname \$(realpath \${BASH_SOURCE[0]}))
 #_gpu=virtio
 #_gpu=03:00.0
 
+# looking glass kvmfr device index, /dev/kvmfr[0,1,...]
+# _gpu must be a PCI address to enable this
+#_kvmfrid=1
+
+# fullscreen mode, default is yes
+#_fullscreen=no
+
 # network cards mode, [qemu|nat|lan|natlan|none], default is qemu
 #_nic=nat
 
@@ -71,7 +81,7 @@ _vmdir=\$(dirname \$(realpath \${BASH_SOURCE[0]}))
 # enable tpm [no|yes], default is no
 #_tpm=yes
 
-# display mode [sdl|gtk], default is sdl
+# display mode [sdl|gtk|none], default is sdl
 #_display=gtk
 
 # resolution, default is 1920x1080
@@ -97,15 +107,23 @@ source \$(which bashvirt.sh) "\${@}"
 EOB
 }
 
+list_running_vms() {
+    pidof qemu-system-x86_64 \
+        | xargs ps --no-headers -o command -p \
+        | grep -oE " -name \w+ " \
+        | awk '{print $2}' \
+        | xargs
+}
+
 _sdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 
 case ${1} in
-    tpl2)
-        cat ${_sdir}/template.sh
-        exit 0
-        ;;
     tpl)
         print_template
+        exit 0
+        ;;
+    ls)
+        list_running_vms
         exit 0
         ;;
     -h|--help|help)
@@ -202,25 +220,49 @@ fi
 
 IFS=x read -ra _resarr <<< "${_resolution}"
 _resargs="xres=${_resarr[0]},yres=${_resarr[1]}"
-_vga="-device VGA,${_resargs}"
+_vga_device="-device VGA,${_resargs}"
 
 _gpu=${_gpu:-std}
+_pciaddr_pattern=^[0-9a-f]{2}:[0-9a-f]{2}.[0-9a-f]$
 if [[ "${_gpu}" == "std" ]]; then
-    _gpu_device="${_vga}"
-elif [[ "${_gpu}" =~ ^[0-9a-f]{2}:[0-9a-f]{2}.[0-9a-f]$ ]]; then
-    _gpu_device="${_vga} -device vfio-pci,host=${_gpu}"
+    _gpu_devices="${_vga_device}"
 elif [[ "${_gpu}" == "virtio" ]]; then
-    _gpu_device="-device virtio-vga-gl,${_resargs}"
+    _gpu_devices="-device virtio-vga-gl,${_resargs}"
 elif [[ "${_gpu}" == "qxl" ]]; then
-    _gpu_device="-device qxl-vga,${_resargs}"
+    _gpu_devices="-device qxl-vga,${_resargs}"
+elif [[ "${_gpu}" =~ ${_pciaddr_pattern} ]]; then
+    _gpu_devices="${_vga_device} -device vfio-pci,host=${_gpu}"
 else
-    eprintf "_gpu only support: <std|virtio|qxl>\n"
+    eprintf "_gpu only support: <std|virtio|qxl|pci_addr+kvmfrid>\n"
+fi
+
+_kvmfrid_pattern=^[0-9]{1}$
+_spice_sock=${_vmdir}/spice.sock
+if [[ "${_kvmfrid}" =~ ${_kvmfrid_pattern} && "${_gpu}" =~ ${_pciaddr_pattern} ]]; then
+    _kvmfrmem=$(cat /etc/modprobe.d/kvmfr.conf | cut -d'=' -f 2 | cut -d',' -f "$((_kvmfrid+1))")
+    _spice_devices="-spice unix=on,addr=${_spice_sock},disable-ticketing=on"
+    _spice_devices+=" -device virtio-serial-pci -chardev spicevmc,id=spicechar,name=vdagent"
+    _spice_devices+=" -device virtserialport,chardev=spicechar,name=com.redhat.spice.0"
+    _kvmfr_devices="-object memory-backend-file,id=looking-glass"
+    _kvmfr_devices+=",mem-path=/dev/kvmfr${_kvmfrid},size=${_kvmfrmem}M,share=yes"
+    _kvmfr_devices+=" -device ivshmem-plain,id=shmem0,memdev=looking-glass"
+    _kvmfr_devices+=" -device virtio-keyboard -device virtio-mouse"
+else
+    _glopt=",gl=on"
 fi
 
 _display=${_display:-sdl}
-[[ "${_display}" == "sdl" ]] || _display=gtk
-_display_device="-display ${_display},gl=on,full-screen=on"
+[[ "${_display}" == "sdl" || "${_display}" == "gtk" || "${_display}" == "none" ]] \
+    || eprintf "_display only support: <sdl|gtk|none>\n"
+
+_display_device="-display ${_display}${_glopt}"
+
+_fullscreen=${_fullscreen:-yes}
+[[ "${_fullscreen}" == "yes" ]] && _display_device+=",full-screen=on"
+
 # [[ "${_display}" == "gtk" ]] && _display_device+=" -usb -device usb-tablet"
+
+[[ "${_display}" == "none" ]] && _display_device=""
 
 #################################################################################
 # Network Card
@@ -240,7 +282,7 @@ case "${_nic_adapter}" in
 esac
 
 gen_mac_addr() {
-    local _hash=$(printf "${_vmname}${1}" | sha256sum)
+    local _hash=$(printf "${_vmname}:${1}" | sha256sum)
     echo "52:54:${_hash:0:2}:${_hash:2:2}:${_hash:4:2}:${_hash:6:2}"
 }
 
@@ -396,12 +438,15 @@ _monitor_sock=${_vmdir}/qemu-monitor.sock
 _audio_devices="-device ich9-intel-hda"
 _audio_devices+=" -audiodev pipewire,id=snd0 -device hda-output,audiodev=snd0"
 
-_qemu_options="-enable-kvm -machine q35 -cpu ${_cpu_model} -smp ${_cpus} -m ${_mem}"
-_qemu_options+=" -pidfile ${_qemu_pidf} -monitor unix:${_monitor_sock},server,nowait"
+_qemu_options="-enable-kvm -machine q35 -name ${_vmname}"
+_qemu_options+=" -cpu ${_cpu_model} -smp ${_cpus} -m ${_mem} -device qemu-xhci"
+_qemu_options+=" -monitor unix:${_monitor_sock},server,nowait -pidfile ${_qemu_pidf}"
 _qemu_options+=" ${_uefi_firms} ${_tpm_devices}"
 _qemu_options+=" ${_disk_devices} ${_nic_devices}"
-_qemu_options+=" ${_bootcd} ${_nonbootcd} ${_viofs_devices}"
-_qemu_options+=" ${_gpu_device} ${_display_device} ${_audio_devices}"
+_qemu_options+=" ${_bootcd} ${_nonbootcd}"
+_qemu_options+=" ${_gpu_devices} ${_display_device} ${_audio_devices}"
+_qemu_options+=" ${_viofs_devices}"
+_qemu_options+=" ${_spice_devices} ${_kvmfr_devices}"
 
 #################################################################################
 # QEMU start
@@ -445,8 +490,7 @@ monitor_connect() {
 monitor_exec() {
     local _result
     if [[ -S ${_monitor_sock} ]]; then
-        _result=$(echo "${@}" | socat - UNIX-CONNECT:${_monitor_sock})
-        _result=$(echo "${_result}" | tail --lines=+2 | grep -v '^(qemu)')
+        echo "${@}" | socat - UNIX-CONNECT:${_monitor_sock} | tail --lines=+2 | grep -v '^(qemu)'
     fi
 }
 
@@ -486,6 +530,11 @@ switch_tty() {
     monitor_exec sendkey ctrl-alt-f${1}
 }
 
+rdp_conn() {
+    [[ -f ${_vmdir}/ipaddr.sh ]] || eprintf "ipaddr.sh not found\n"
+    source ${_vmdir}/ipaddr.sh
+    sdl-freerdp3 /v:${_ipaddr}
+}
 
 #################################################################################
 # Options Dispatcher
@@ -501,6 +550,16 @@ case ${1} in
     tty)
         shift
         switch_tty ${@}
+        ;;
+    lg)
+        looking-glass-client -p 0 -c ${_spice_sock}
+        ;;
+    rdp)
+        rdp_conn
+        ;;
+    mac)
+        echo "brnat: $(gen_mac_addr brnat)"
+        echo "brlan: $(gen_mac_addr brlan)"
         ;;
     usb-attach)
         shift

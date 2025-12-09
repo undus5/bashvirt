@@ -1,12 +1,22 @@
 [Match]
 Name=brnat
+
 [Network]
 IPv4Forwarding=yes
 DHCPServer=true
 Address=10.9.8.7/24
+
 [DHCPServer]
 DNS=10.9.8.7
+PoolOffset=100
+PoolSize=100
+
+# [DHCPServerStaticLease]
+# MACAddress=52:54:00:12:34:56
+# Address=10.9.8.235
+
 [DHCPv4]
 RouteMetric=200
+
 [IPV6AcceptRA]
 RouteMetric=200
