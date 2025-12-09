@@ -91,6 +91,7 @@ actions:
     tpl                     print template
     ls                      list running virtual machines
     lg                      start looking-glass-client
+    rdp                     start sdl-freerdp3 client
     reset                   equals to press power reset button
     tty [1-7]               send key combo ctrl-alt-f[1-7] to virtual machine
     mac                     return MAC addresses

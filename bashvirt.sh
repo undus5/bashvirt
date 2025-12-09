@@ -18,6 +18,7 @@ actions:
     tpl                     print template
     ls                      list running virtual machines
     lg                      start looking-glass-client
+    rdp                     start sdl-freerdp3 client
     reset                   equals to press power reset button
     tty [1-7]               send key combo ctrl-alt-f[1-7] to virtual machine
     mac                     return MAC addresses
@@ -534,7 +535,7 @@ switch_tty() {
 rdp_conn() {
     [[ -f ${_vmdir}/ipaddr.sh ]] || eprintf "ipaddr.sh not found\n"
     source ${_vmdir}/ipaddr.sh
-    sdl-freerdp3 +dynamic-resolution /v:${_ipaddr}
+    sdl-freerdp3 +dynamic-resolution /v:${_ipaddr} "${@}"
 }
 
 #################################################################################
@@ -556,7 +557,8 @@ case ${1} in
         looking-glass-client -f ${_kvmfrfile} -c ${_spice_sock} -p 0
         ;;
     rdp)
-        rdp_conn
+        shift
+        rdp_conn "${@}"
         ;;
     mac)
         echo "brnat: $(gen_mac_addr brnat)"
