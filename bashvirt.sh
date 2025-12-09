@@ -533,7 +533,7 @@ switch_tty() {
 rdp_conn() {
     [[ -f ${_vmdir}/ipaddr.sh ]] || eprintf "ipaddr.sh not found\n"
     source ${_vmdir}/ipaddr.sh
-    sdl-freerdp3 /v:${_ipaddr}
+    sdl-freerdp3 +dynamic-resolution /v:${_ipaddr}
 }
 
 #################################################################################
