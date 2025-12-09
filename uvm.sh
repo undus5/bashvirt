@@ -6,19 +6,17 @@ eprintf() {
     exit 1
 }
 
+which qvars.sh &>/dev/null || eprintf "qvars.sh not found\n"
+source $(which qvars.sh)
+
 print_help() {
     eprintf "Usage: ${0} [a|d] _vmname _device_name\n"
 }
 
-which qvdir.sh &>/dev/null || eprintf "qvdir.sh not found\n"
-source $(which qvdir.sh)
-which usbids.sh &>/dev/null || eprintf "usbids.sh not found\n"
-source $(which usbids.sh)
-
 _action=${1}
 _vmname=${2}
-_devname=${3}
-_vmdir=${_qvdir}/${_vmname}
+_devname=_${3}
+_vmdir=${_qvmdir}/${_vmname}
 _vmexec="${_vmdir}/run.sh"
 
 case "${_action}" in

@@ -6,11 +6,11 @@ eprintf() {
     exit 1
 }
 
-which qvdir.sh &>/dev/null || eprintf "qvdir.sh not found\n"
-source $(which qvdir.sh)
+which qvars.sh &>/dev/null || eprintf "qvars.sh not found\n"
+source $(which qvars.sh)
 
 _vmname=${1}
-_vmdir=${_qvdir}/${_vmname}
+_vmdir=${_qvmdir}/${_vmname}
 _vmexec="${_vmdir}/run.sh"
 
 if [[ "${_vmname}" == "--" ]]; then
