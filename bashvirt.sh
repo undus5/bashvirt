@@ -553,7 +553,7 @@ case ${1} in
         switch_tty ${@}
         ;;
     lg)
-        looking-glass-client -p 0 -c ${_spice_sock} -f ${_kvmfrfile}
+        looking-glass-client -f ${_kvmfrfile} -c ${_spice_sock} -p 0
         ;;
     rdp)
         rdp_conn
