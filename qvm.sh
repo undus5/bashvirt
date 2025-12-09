@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # _sdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 eprintf() {

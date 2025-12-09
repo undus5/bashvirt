@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-_warning="warning: do not run \`$(basename ${BASH_SOURCE[0]})\` directly"
-_warning+=", source it from launching script under a dedicated \`_vmdir\`"
+# WARNING: do not run `bashvirt.sh` directly, source it from launching script
+#          under a dedicated `_vmdir`
+
 _logfile=${_vmdir}/journal.txt
 eprintf() {
     [[ -n "${_vmdir}" ]] && printf "${@}" >> ${_logfile}
     printf "${@}" >&2
-    printf "\n${_warning}\n" >&2
     exit 1
 }
 
@@ -506,6 +506,8 @@ usb_attach() {
     if [[ ! "${_devid}" =~ $_id_pattern ]]; then
         eprintf "invalid device ID\n"
     fi
+    command -v lsusb &>/dev/null || eprintf "command not found: lsusb\n"
+    lsusb | grep -q ${_devid} || eprintf "device not found: ${_devid}\n"
     local _vendid=$(echo "${_devid}" | cut -d : -f 1)
     local _prodid=$(echo "${_devid}" | cut -d : -f 2)
     local _qexec="device_add usb-host"
