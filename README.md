@@ -87,12 +87,13 @@ Run `bashvirt.sh -h` to get help info.
 ```
 usage: bashvirt.sh [actions]
 actions:
-                            boot virtual machine normally without arguments
-    tpl                     print template
+    tpl                     print launching script template
     ls                      list running virtual machines
+                            boot virtual machine normally without arguments
+    reset                   reset virtual machine
+    kill                    kill virtual machine
     lg                      start looking-glass-client
     rdp                     start sdl-freerdp3 client
-    reset                   equals to press power reset button
     tty [1-7]               send key combo ctrl-alt-f[1-7] to virtual machine
     mac                     return MAC addresses
     monitor-exec            send command to qemu monitor

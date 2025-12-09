@@ -14,12 +14,13 @@ print_help() {
 cat << EOB
 usage: $(basename $0) [actions]
 actions:
-                            boot virtual machine normally without arguments
-    tpl                     print template
+    tpl                     print launching script template
     ls                      list running virtual machines
+                            boot virtual machine normally without arguments
+    reset                   reset virtual machine
+    kill                    kill virtual machine
     lg                      start looking-glass-client
     rdp                     start sdl-freerdp3 client
-    reset                   equals to press power reset button
     tty [1-7]               send key combo ctrl-alt-f[1-7] to virtual machine
     mac                     return MAC addresses
     monitor-exec            send command to qemu monitor
@@ -109,7 +110,9 @@ EOB
 }
 
 list_running_vms() {
-    pidof qemu-system-x86_64 \
+    local _pids=$(pidof qemu-system-x86_64)
+    [[ -n "${_pids}" ]] || exit 0
+    echo "${_pids}" \
         | xargs ps --no-headers -o command -p \
         | grep -oE " -name \w+ " \
         | awk '{print $2}' \
@@ -538,6 +541,11 @@ rdp_conn() {
     sdl-freerdp3 +dynamic-resolution /v:${_ipaddr} "${@}"
 }
 
+kill_qemu() {
+    [[ -f ${_qemu_pidf} ]] || exit 0
+    cat ${_qemu_pidf} | xargs kill -9
+}
+
 #################################################################################
 # Options Dispatcher
 #################################################################################
@@ -549,9 +557,8 @@ case ${1} in
     reset)
         monitor_exec system_reset
         ;;
-    tty)
-        shift
-        switch_tty ${@}
+    kill)
+        kill_qemu
         ;;
     lg)
         looking-glass-client -f ${_kvmfrfile} -c ${_spice_sock} -p 0
@@ -559,6 +566,10 @@ case ${1} in
     rdp)
         shift
         rdp_conn "${@}"
+        ;;
+    tty)
+        shift
+        switch_tty ${@}
         ;;
     mac)
         echo "brnat: $(gen_mac_addr brnat)"
