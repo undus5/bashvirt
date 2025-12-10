@@ -10,14 +10,17 @@ which qvars.sh &>/dev/null || eprintf "qvars.sh not found\n"
 source $(which qvars.sh)
 
 print_help() {
-    eprintf "Usage: ${0} [a|d] _vmname _device_name\n"
+    eprintf "Usage: $(basename ${0}) [a|d] _vmname _device_name\n"
 }
 
-_action=${1}
-_vmname=${2}
-_devname=_${3}
+_vmname=${1}
+_devname=_${2}
+_action=${3}
 _vmdir=${_qvmdir}/${_vmname}
 _vmexec="${_vmdir}/run.sh"
+
+# _devid=${!_devname}
+declare -n _devid=${_devname}
 
 case "${_action}" in
     a)
@@ -31,10 +34,11 @@ case "${_action}" in
         ;;
 esac
 [[ -n "${_devname}" ]] || print_help
-[[ -n "${!_devname}" ]] || eprintf "${_devname} is undefined\n"
+[[ -n "${_devid}" ]] || eprintf "undefined device: ${_devname}\n"
 
 if [[ -d "${_vmdir}" && -f "${_vmexec}" ]]; then
     "${_vmexec}" ${_act} ${!_devname}
 else
     eprintf "${_vmname} not found\n"
 fi
+
