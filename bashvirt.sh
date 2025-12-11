@@ -54,9 +54,11 @@ _vmdir=\$(dirname \$(realpath \${BASH_SOURCE[0]}))
 #_gpu=virtio
 #_gpu=03:00.0
 
-# looking glass kvmfr device index, /dev/kvmfr[0,1,...]
+# looking glass shm file index for:
+# /dev/kvmfr[0,1,...], /dev/shm/looking-glass-[0,1,...]
 # _gpu must be a PCI address to enable this
-#_kvmfrid=1
+#_looking_glass_id=1
+#_looking_glass_type=shm
 
 # fullscreen mode, default is yes
 #_fullscreen=no
@@ -240,18 +242,24 @@ else
     eprintf "_gpu only support: <std|virtio|qxl|pci_addr+kvmfrid>\n"
 fi
 
-_kvmfrid_pattern=^[0-9]{1}$
-_kvmfrfile=/dev/kvmfr${_kvmfrid}
+_looking_glass_type=${_looking_glass_type:-kvmfr}
+[[ "${_looking_glass_type}" == "kvmfr" || "${_looking_glass_type}" == "shm" ]] \
+    || eprintf "_looking_glass_type only support: <kvmfr|shm>\n"
 _spice_sock=${_vmdir}/spice.sock
-if [[ "${_kvmfrid}" =~ ${_kvmfrid_pattern} && "${_gpu}" =~ ${_pciaddr_pattern} ]]; then
-    _kvmfrmem=$(cat /etc/modprobe.d/kvmfr.conf | cut -d'=' -f 2 | cut -d',' -f "$((_kvmfrid+1))")
+if [[ "${_gpu}" =~ ${_pciaddr_pattern} && "${_looking_glass_id}" =~ ^[0-9]{1}$ ]]; then
     _spice_devices="-spice unix=on,addr=${_spice_sock},disable-ticketing=on"
     _spice_devices+=" -device virtio-serial-pci -chardev spicevmc,id=spicechar,name=vdagent"
     _spice_devices+=" -device virtserialport,chardev=spicechar,name=com.redhat.spice.0"
-    _kvmfr_devices="-object memory-backend-file,id=looking-glass"
-    _kvmfr_devices+=",mem-path=${_kvmfrfile},size=${_kvmfrmem}M,share=yes"
-    _kvmfr_devices+=" -device ivshmem-plain,id=shmem0,memdev=looking-glass"
-    _kvmfr_devices+=" -device virtio-keyboard -device virtio-mouse"
+    if [[ "${_looking_glass_type}" == "kvmfr" ]]; then
+        _lg_shm_devf=/dev/kvmfr${_looking_glass_id}
+    else
+        _lg_shm_devf=/dev/shm/looking-glass-${_looking_glass_id}
+    fi
+    _lg_mem_size=$(cat /etc/modprobe.d/kvmfr.conf | cut -d'=' -f 2 | cut -d',' -f "$((_looking_glass_id+1))")
+    _lg_devices="-object memory-backend-file,id=looking-glass,share=on"
+    _lg_devices+=",mem-path=${_lg_shm_devf},size=${_lg_mem_size}M"
+    _lg_devices+=" -device ivshmem-plain,memdev=looking-glass"
+    _lg_devices+=" -device virtio-keyboard -device virtio-mouse"
 else
     _glopt=",gl=on"
 fi
@@ -451,7 +459,7 @@ _qemu_options+=" ${_disk_devices} ${_nic_devices}"
 _qemu_options+=" ${_bootcd} ${_nonbootcd}"
 _qemu_options+=" ${_gpu_devices} ${_display_device} ${_audio_devices}"
 _qemu_options+=" ${_viofs_devices}"
-_qemu_options+=" ${_spice_devices} ${_kvmfr_devices}"
+_qemu_options+=" ${_spice_devices} ${_lg_devices}"
 
 #################################################################################
 # QEMU start
@@ -563,7 +571,7 @@ case ${1} in
         kill_qemu
         ;;
     lg)
-        looking-glass-client -f ${_kvmfrfile} -c ${_spice_sock} -p 0
+        looking-glass-client -f ${_lg_shm_devf} -c ${_spice_sock} -p 0
         ;;
     rdp)
         shift
