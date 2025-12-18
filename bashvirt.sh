@@ -4,7 +4,8 @@
 #          under a dedicated `_vmdir`
 
 _logfile=${_vmdir}/journal.txt
-eprintf() {
+
+errf() {
     [[ -n "${_vmdir}" ]] && printf "${@}" >> ${_logfile}
     printf "${@}" >&2
     exit 1
@@ -141,9 +142,13 @@ case ${1} in
         ;;
 esac
 
-[[ -n "${_vmdir}" ]] || eprintf "_vmdir is undefined\n"
-[[ -d "${_vmdir}" ]] || eprintf "directory not found: ${_vmdir}\n"
+[[ -n "${_vmdir}" ]] || errf "_vmdir is undefined\n"
+[[ -d "${_vmdir}" ]] || errf "directory not found: ${_vmdir}\n"
 _vmname=$(basename "${_vmdir}")
+
+command_check() {
+    command -v ${1} &>/dev/null || errf "command not found: ${1}\n"
+}
 
 #################################################################################
 # Disk Image
@@ -165,7 +170,7 @@ case "${_disk_adapter}" in
         _disk_model="ide-hd"
         ;;
     *)
-        eprintf "_disk_adapter only support: <virtio|sata>\n"
+        errf "_disk_adapter only support: <virtio|sata>\n"
         ;;
 esac
 
@@ -185,7 +190,7 @@ if [[ -n "${_bootiso}" ]]; then
         _bootcd="-drive file=${_bootiso},media=cdrom,if=none,id=cd0"
         _bootcd+=" -device ide-cd,drive=cd0,bootindex=0"
     else
-       eprintf "file not found: ${_bootiso}\n"
+       errf "file not found: ${_bootiso}\n"
     fi
 fi
 
@@ -193,7 +198,7 @@ if [[ -n "${_nonbootiso}" ]]; then
     if [[ -f "${_nonbootiso}" ]]; then
         _nonbootcd="-drive file=${_nonbootiso},media=cdrom"
     else
-        eprintf "file not found: ${_nonbootiso}\n"
+        errf "file not found: ${_nonbootiso}\n"
     fi
 fi
 
@@ -222,7 +227,7 @@ _resolution=${_resolution:-1920x1080}
 _resolution=$(echo "${_resolution}" | tr '[:upper:]' '[:lower:]')
 
 if [[ ! "${_resolution}" =~ ^[1-9]+[0-9]+x[1-9]+[0-9]+$ ]]; then
-    eprintf "invalid resolution ${_resolution}\n"
+    errf "invalid resolution ${_resolution}\n"
 fi
 
 IFS=x read -ra _resarr <<< "${_resolution}"
@@ -240,12 +245,12 @@ elif [[ "${_gpu}" == "qxl" ]]; then
 elif [[ "${_gpu}" =~ ${_pciaddr_pattern} ]]; then
     _gpu_devices="${_vga_device} -device vfio-pci,host=${_gpu}"
 else
-    eprintf "_gpu only support: <std|virtio|qxl|pci_addr+kvmfrid>\n"
+    errf "_gpu only support: <std|virtio|qxl|pci_addr+kvmfrid>\n"
 fi
 
 _looking_glass_type=${_looking_glass_type:-kvmfr}
 [[ "${_looking_glass_type}" == "kvmfr" || "${_looking_glass_type}" == "shm" ]] \
-    || eprintf "_looking_glass_type only support: <kvmfr|shm>\n"
+    || errf "_looking_glass_type only support: <kvmfr|shm>\n"
 _spice_sock=${_vmdir}/spice.sock
 if [[ "${_gpu}" =~ ${_pciaddr_pattern} && "${_looking_glass_id}" =~ ^[0-9]{1}$ ]]; then
     _spice_devices="-spice unix=on,addr=${_spice_sock},disable-ticketing=on"
@@ -267,7 +272,7 @@ fi
 
 _display=${_display:-sdl}
 [[ "${_display}" == "sdl" || "${_display}" == "gtk" || "${_display}" == "none" ]] \
-    || eprintf "_display only support: <sdl|gtk|none>\n"
+    || errf "_display only support: <sdl|gtk|none>\n"
 
 _display_device="-display ${_display}${_glopt}"
 
@@ -291,7 +296,7 @@ case "${_nic_adapter}" in
         _nic_model="e1000"
         ;;
     *)
-        eprintf "_nic_adapter only support: <virtio|e1000>\n"
+        errf "_nic_adapter only support: <virtio|e1000>\n"
         ;;
 esac
 
@@ -303,10 +308,10 @@ gen_mac_addr() {
 bridge_check() {
     local _br=${1:-brlan}
     if ! ip link show | grep -q "${_br}"; then
-        eprintf "network bridge not found: ${_br}\n"
+        errf "network bridge not found: ${_br}\n"
     fi
     if ! grep -q "allow ${_br}" /etc/qemu/bridge.conf; then
-        eprintf "${_br} not found in /etc/qemu/bridge.conf \n"
+        errf "${_br} not found in /etc/qemu/bridge.conf \n"
     fi
 }
 
@@ -332,7 +337,7 @@ case "${_nic}" in
         _nic_devices=""
         ;;
     *)
-        eprintf "_nic only support: <qemu|nat|lan|natlan|none>\n"
+        errf "_nic only support: <qemu|nat|lan|natlan|none>\n"
         ;;
 esac
 
@@ -374,7 +379,7 @@ is_pid_swtpm() {
 }
 
 init_swtpm() {
-    command -v swtpm &>/dev/null || eprintf "swtpm: command not found\n"
+    command_check swtpm
     if [[ -z "${_tpm_pid}" ]] || [[ ! $(is_pid_swtpm "${_tpm_pid}") ]]; then
         swtpm socket --tpm2 --tpmstate dir=${_vmdir} \
             --ctrl type=unixio,path=${_tpm_sock} \
@@ -416,8 +421,8 @@ is_pid_viofs() {
 
 init_viofs() {
     if [[ -n "${_viofsdir}" ]]; then
-        [[ -d "${_viofsdir}" ]] || eprintf "dir not found: ${_viofsdir}\n"
-        [[ -f "${_viofs_exec}" ]] || eprintf "command not found: ${_viofs_exec}\n"
+        [[ -d "${_viofsdir}" ]] || errf "dir not found: ${_viofsdir}\n"
+        [[ -f "${_viofs_exec}" ]] || errf "command not found: ${_viofs_exec}\n"
         if [[ -z "${_viofs_pid}" ]] || [[ ! $(is_pid_viofs "${_viofs_pid}") ]]; then
             _host_uid=$(id -u)
             _host_gid=$(id -g)
@@ -482,7 +487,7 @@ qemu_running_check() {
     [[ -f ${_qemu_pidf} ]] || return 0
     _proc_comm=$(cat ${_qemu_pidf} | xargs -I{} ps -o command= -p {})
     if [[ "${_proc_comm}" =~ "qemu-system-x86_64" ]]; then
-        eprintf "vm already running\n"
+        errf "vm already running\n"
     fi
 }
 
@@ -513,10 +518,10 @@ _id_pattern=^[0-9a-f]{4}:[0-9a-f]{4}$
 usb_attach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
     if [[ ! "${_devid}" =~ $_id_pattern ]]; then
-        eprintf "invalid device ID\n"
+        errf "invalid device ID\n"
     fi
-    command -v lsusb &>/dev/null || eprintf "command not found: lsusb\n"
-    lsusb | grep -q ${_devid} || eprintf "device not found: ${_devid}\n"
+    command_check lsusb
+    lsusb | grep -q ${_devid} || errf "device not found: ${_devid}\n"
     local _vendid=$(echo "${_devid}" | cut -d : -f 1)
     local _prodid=$(echo "${_devid}" | cut -d : -f 2)
     local _qexec="device_add usb-host"
@@ -528,7 +533,7 @@ usb_attach() {
 usb_detach() {
     local _devid=$(echo "${1}" | tr -d [:space:])
     if [[ ! "${_devid}" =~ $_id_pattern ]]; then
-        eprintf "invalid device ID\n"
+        errf "invalid device ID\n"
     fi
     local _vendid=$(echo "${_devid}" | cut -d : -f 1)
     local _prodid=$(echo "${_devid}" | cut -d : -f 2)
@@ -541,13 +546,13 @@ usb_list() {
 
 switch_tty() {
     if [[ ! "${1}" =~ ^[1-7]$ ]]; then
-        eprintf "invalid tty number\n"
+        errf "invalid tty number\n"
     fi
     monitor_exec sendkey ctrl-alt-f${1}
 }
 
 rdp_conn() {
-    [[ -f ${_vmdir}/ipaddr.sh ]] || eprintf "ipaddr.sh not found\n"
+    [[ -f ${_vmdir}/ipaddr.sh ]] || errf "ipaddr.sh not found\n"
     source ${_vmdir}/ipaddr.sh
     sdl-freerdp3 +dynamic-resolution /v:${_ipaddr} "${@}"
 }
