@@ -1,10 +1,7 @@
 #!/bin/bash
 
 # _sdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
-errf() {
-    printf "${@}" >&2
-    exit 1
-}
+errf() { printf "${@}" >&2; exit 1; }
 
 which qvars.sh &>/dev/null || errf "qvars.sh not found\n"
 source $(which qvars.sh)

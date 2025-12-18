@@ -7,8 +7,7 @@ _logfile=${_vmdir}/journal.txt
 
 errf() {
     [[ -n "${_vmdir}" ]] && printf "${@}" >> ${_logfile}
-    printf "${@}" >&2
-    exit 1
+    printf "${@}" >&2; exit 1
 }
 
 print_help() {
