@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # _sdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
-eprintf() {
+errf() {
     printf "${@}" >&2
     exit 1
 }
 
-which qvars.sh &>/dev/null || eprintf "qvars.sh not found\n"
+which qvars.sh &>/dev/null || errf "qvars.sh not found\n"
 source $(which qvars.sh)
 
 _vmname=${1}
@@ -20,5 +20,5 @@ elif [[ -d "${_vmdir}" && -f "${_vmexec}" ]]; then
     shift
     "${_vmexec}" "${@}"
 else
-    eprintf "${_vmname} not found\n"
+    errf "${_vmname} not found\n"
 fi
