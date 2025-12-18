@@ -31,7 +31,6 @@ case "${_action}" in
         ;;
 esac
 
-[[ -n "${_devname}" ]] || print_help
 declare -n _devid=${_devname}
 # _devid=${!_devname}
 [[ -n "${_devid}" ]] || errf "undefined device: ${_devname}\n"
