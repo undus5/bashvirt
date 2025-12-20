@@ -1,0 +1,4 @@
+[Match]
+OriginalName=brlan
+[Link]
+MACAddressPolicy=none
