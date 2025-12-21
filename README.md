@@ -96,6 +96,7 @@ actions:
     rdp                     start sdl-freerdp3 client
     tty [1-7]               send key combo ctrl-alt-f[1-7] to virtual machine
     mac                     return MAC addresses
+    ip                      return IP addresses
     monitor-exec            send command to qemu monitor
     monitor-conn            connect to qemu monitor, interactive mode
     usb-attach <device_id>  passthrough usb device to virtual machine

@@ -28,8 +28,8 @@ case "${_action}" in
         ;;
 esac
 
-declare -n _devid=${_devname}
 # _devid=${!_devname}
+declare -n _devid=${_devname}
 [[ -n "${_devid}" ]] || errf "undefined device: ${_devname}\n"
 
 if [[ -d "${_vmdir}" && -f "${_vmexec}" ]]; then

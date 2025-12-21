@@ -23,6 +23,7 @@ actions:
     rdp                     start sdl-freerdp3 client
     tty [1-7]               send key combo ctrl-alt-f[1-7] to virtual machine
     mac                     return MAC addresses
+    ip                      return IP addresses
     monitor-exec            send command to qemu monitor
     monitor-conn            connect to qemu monitor, interactive mode
     usb-attach <device_id>  passthrough usb device to virtual machine
@@ -132,9 +133,6 @@ case ${1} in
     ls)
         list_running_vms
         exit 0
-        ;;
-    -h|--help|help)
-        print_help
         ;;
     -h|--help|help)
         print_help
@@ -299,7 +297,7 @@ case "${_nic_adapter}" in
         ;;
 esac
 
-gen_mac_addr() {
+gen_mac() {
     local _hash=$(printf "${_vmname}:${1}" | sha256sum)
     echo "52:54:${_hash:0:2}:${_hash:2:2}:${_hash:4:2}:${_hash:6:2}"
 }
@@ -316,21 +314,21 @@ bridge_check() {
 
 case "${_nic}" in
     ""|qemu)
-        _nic_devices="-nic user,model=${_nic_model},mac=$(gen_mac_addr user)"
+        _nic_devices="-nic user,model=${_nic_model},mac=$(gen_mac user)"
         ;;
     nat)
         bridge_check brnat
-        _nic_devices="-nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat)"
+        _nic_devices="-nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac brnat)"
         ;;
     lan)
         bridge_check brlan
-        _nic_devices="-nic bridge,br=brlan,model=${_nic_model},mac=$(gen_mac_addr brlan)"
+        _nic_devices="-nic bridge,br=brlan,model=${_nic_model},mac=$(gen_mac brlan)"
         ;;
     natlan)
         bridge_check brnat
         bridge_check brlan
-        _nic_devices="-nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brnat)"
-        _nic_devices+=" -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac_addr brlan)"
+        _nic_devices="-nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac brnat)"
+        _nic_devices+=" -nic bridge,br=brnat,model=${_nic_model},mac=$(gen_mac brlan)"
         ;;
     none)
         _nic_devices=""
@@ -339,6 +337,20 @@ case "${_nic}" in
         errf "_nic only support: <qemu|nat|lan|natlan|none>\n"
         ;;
 esac
+
+ip_scan() {
+    command_check arp-scan
+    local _natip
+    local _lanip
+    if ip link | grep brnat | grep -q "state UP"; then
+        _natip=$(arp-scan -x -l -I brnat | grep $(gen_mac brnat) | awk '{ printf $1 }')
+        [[ -n "${_natip}" ]] && echo "brnat: ${_natip}"
+    fi
+    if ip link | grep brlan | grep -q "state UP"; then
+        _lanip=$(arp-scan -x -l -I brlan | grep $(gen_mac brlan) | awk '{ printf $1 }')
+        [[ -n "${_lanip}" ]] && echo "brlan: ${_lanip}"
+    fi
+}
 
 #################################################################################
 # CPU Model
@@ -587,8 +599,11 @@ case ${1} in
         switch_tty ${@}
         ;;
     mac)
-        echo "brnat: $(gen_mac_addr brnat)"
-        echo "brlan: $(gen_mac_addr brlan)"
+        echo "brnat: $(gen_mac brnat)"
+        echo "brlan: $(gen_mac brlan)"
+        ;;
+    ip)
+        ip_scan
         ;;
     usb-attach)
         shift
