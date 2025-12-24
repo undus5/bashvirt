@@ -3,8 +3,8 @@
 # _sdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 errf() { printf "${@}" >&2; exit 1; }
 
-which qvars.sh &>/dev/null || errf "qvars.sh not found\n"
-source $(which qvars.sh)
+which evars.sh &>/dev/null || errf "evars.sh not found\n"
+source $(which evars.sh)
 
 print_help() {
     errf "Usage: $(basename ${0}) [a|d] _vmname _device_name\n"

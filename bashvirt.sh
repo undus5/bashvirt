@@ -563,8 +563,8 @@ switch_tty() {
 }
 
 rdp_conn() {
-    [[ -f ${_vmdir}/ipaddr.sh ]] || errf "ipaddr.sh not found\n"
-    source ${_vmdir}/ipaddr.sh
+    local _ipaddr=$(ip_scan | grep brnat | cut -d' ' -f2)
+    [[ -n "${_ipaddr}" ]] || errf "IP address not found for brnat\n"
     sdl-freerdp3 +dynamic-resolution /v:${_ipaddr} "${@}"
 }
 
