@@ -264,7 +264,7 @@ if [[ "${_gpu}" =~ ${_pciaddr_pattern} && "${_looking_glass_id}" =~ ^[0-9]{1}$ ]
     _lg_devices+=" -device ivshmem-plain,memdev=looking-glass"
     _lg_devices+=" -device virtio-keyboard -device virtio-mouse"
 else
-    _glopt=",gl=on"
+    [[ "${_display}" == "none" ]] || _glopt=",gl=on"
 fi
 
 _display=${_display:-sdl}
@@ -277,8 +277,6 @@ _fullscreen=${_fullscreen:-yes}
 [[ "${_fullscreen}" == "yes" ]] && _display_device+=",full-screen=on"
 
 # [[ "${_display}" == "gtk" ]] && _display_device+=" -usb -device usb-tablet"
-
-[[ "${_display}" == "none" ]] && _display_device=""
 
 #################################################################################
 # Network Card
