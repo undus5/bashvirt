@@ -1,40 +1,39 @@
 #!/bin/bash
 
-# _sdir=$(dirname $(realpath ${BASH_SOURCE[0]}))
 errf() { printf "${@}" >&2; exit 1; }
 
 which evars.sh &>/dev/null || errf "evars.sh not found\n"
 source $(which evars.sh)
 
 print_help() {
-    errf "Usage: $(basename ${0}) [a|d] _vmname _device_name\n"
+    errf "Usage: $(basename ${0}) [a|d] <vmname> <device_name>\n"
 }
 
-_vmname=${1}
-_devname=_${2}
-_action=${3}
-_vmdir=${_qvmdir}/${_vmname}
-_vmexec="${_vmdir}/run.sh"
+vmname=${1}
+devname=${2}
+action=${3}
+vmdir=${qvmdir}/${vmname}
+vmexec="${vmdir}/run.sh"
 
-case "${_action}" in
+case "${action}" in
     a)
-        _act="usb-attach"
+        act="usb-attach"
         ;;
     d)
-        _act="usb-detach"
+        act="usb-detach"
         ;;
     *)
         print_help
         ;;
 esac
 
-# _devid=${!_devname}
-declare -n _devid=${_devname}
-[[ -n "${_devid}" ]] || errf "undefined device: ${_devname}\n"
+# devid=${!devname}
+declare -n devid=${devname}
+[[ -n "${devid}" ]] || errf "undefined device: ${devname}\n"
 
-if [[ -d "${_vmdir}" && -f "${_vmexec}" ]]; then
-    "${_vmexec}" ${_act} ${_devid}
+if [[ -d "${vmdir}" && -f "${vmexec}" ]]; then
+    "${vmexec}" ${act} ${devid}
 else
-    errf "${_vmname} not found\n"
+    errf "${vmname} not found\n"
 fi
 
