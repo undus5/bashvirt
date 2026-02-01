@@ -42,16 +42,16 @@ Suppose you have already downloaded Windows 11 and VirtIO driver iso images to
 ```
 #!/bin/bash
 
-_vmdir=/data/vms/win11
+vmdir=/data/vms/win11
 
-_cpus=4
-_mem=8G
-_storage=80G
-_uefi=yes
-_hyperv=yes
-_tpm=yes
-_bootiso=/data/downloads/win11.iso
-_nonbootiso=/data/downloads/virtio.iso
+cpus=4
+mem=8G
+storage=80G
+uefi=yes
+hyperv=yes
+tpm=yes
+bootiso=/data/downloads/win11.iso
+nonbootiso=/data/downloads/virtio.iso
 
 source /data/bashvirt/bashvirt.sh
 ```
@@ -71,9 +71,9 @@ again, comment out the iso images part, or it would boot from iso every time:
 ```
 ...
 
-#_bootiso=~/Downloads/win11.iso
-#_nonbootiso=~/Downloads/virtio.iso
-_gpu=virtio
+#bootiso=~/Downloads/win11.iso
+#nonbootiso=~/Downloads/virtio.iso
+gpu=virtio
 
 ...
 ```
