@@ -1,8 +1,0 @@
-#!/bin/nft -f
-
-table ip brnat {
-    chain nat_postrouting {
-		type nat hook postrouting priority filter
-        ip saddr 10.9.8.0/24 masquerade
-    }
-}
