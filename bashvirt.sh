@@ -416,12 +416,11 @@ viofs_sock=${vmdir}/${viofs_bin}.sock
 viofs_pidf=${viofs_sock}.pid
 viofs_pid=$([[ -f ${viofs_pidf} ]] && cat ${viofs_pidf})
 
-
 if [[ -n "${viofsdir}" && -d "${viofsdir}" && -f ${viofs_exec} ]]; then
     viofs_devices="-object memory-backend-memfd,id=mem,size=${mem},share=on"
     viofs_devices+=" -numa node,memdev=mem"
     viofs_devices+=" -chardev socket,id=viofsdev,path=${viofs_sock}"
-    viofs_devices+=" -device vhost-user-fs-pci,chardev=viofsdev,tag=virtiofs"
+    viofs_devices+=" -device vhost-user-fs-pci,chardev=viofsdev,tag=VirtIOFS"
 fi
 
 is_pid_viofs() {
