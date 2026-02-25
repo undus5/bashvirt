@@ -8,9 +8,9 @@ source $(which evars.sh)
 
 print_help() { errf "Usage: $(basename ${0}) [a|d] <vmname> <device_name>\n"; }
 
-vmname=${1}
-devname=${2}
-action=${3}
+action=${1}
+vmname=${2}
+devname=${3}
 vmdir=${qvmdir}/${vmname}
 vmexec="${vmdir}/run.sh"
 
@@ -21,14 +21,19 @@ case "${action}" in
     d)
         act="usb-detach"
         ;;
+    l)
+        act="usb-list"
+        ;;
     *)
         print_help
         ;;
 esac
 
-# devid=${!devname}
-declare -n devid=${devname}
-[[ -n "${devid}" ]] || errf "undefined device: ${devname}\n"
+if [[ "${action}" != "l" ]]; then
+    # devid=${!devname}
+    declare -n devid=${devname}
+    [[ -n "${devid}" ]] || errf "undefined device: ${devname}\n"
+fi
 
 if [[ -d "${vmdir}" && -x "${vmexec}" ]]; then
     "${vmexec}" ${act} ${devid}
