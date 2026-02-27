@@ -6,10 +6,10 @@ errf() { printf "${@}" >&2; exit 1; }
 which evars.sh &>/dev/null || errf "evars.sh not found\n"
 source $(which evars.sh)
 
-print_help() { errf "Usage: $(basename ${0}) [a|d] <vmname> <device_name>\n"; }
+print_help() { errf "Usage: $(basename ${0}) <vmname> <a|d|l> [device_name]\n"; }
 
-action=${1}
-vmname=${2}
+vmname=${1}
+action=${2}
 devname=${3}
 vmdir=${qvmdir}/${vmname}
 vmexec="${vmdir}/run.sh"
