@@ -523,7 +523,7 @@ monitor_exec() {
 id_pattern=^[0-9a-f]{4}:[0-9a-f]{4}$
 
 usb_attach() {
-    local devid=$(echo "${1}" | tr -d [:space:])
+    local devid=$(printf "${1}" | tr -d '[:space:]')
     if [[ ! "${devid}" =~ $id_pattern ]]; then
         errf "invalid device ID\n"
     fi
@@ -538,7 +538,7 @@ usb_attach() {
 }
 
 usb_detach() {
-    local devid=$(echo "${1}" | tr -d [:space:])
+    local devid=$(echo "${1}" | tr -d '[:space:]')
     if [[ ! "${devid}" =~ $id_pattern ]]; then
         errf "invalid device ID\n"
     fi
