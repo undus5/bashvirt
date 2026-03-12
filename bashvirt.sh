@@ -202,11 +202,13 @@ fi
 # UEFI / BIOS
 #################################################################################
 
-# OVMF_CODE.secboot.fd
+# Arch
 ovmf_ro=/usr/share/edk2/x64/OVMF_CODE.4m.fd
-[[ -f "${ovmf_ro}" ]] || ovmf_ro=/usr/share/edk2/ovmf/OVMF_CODE.fd
 ovmf_var=/usr/share/edk2/x64/OVMF_VARS.4m.fd
+# Fedora
+[[ -f "${ovmf_ro}" ]] || ovmf_ro=/usr/share/edk2/ovmf/OVMF_CODE.fd
 [[ -f "${ovmf_var}" ]] || ovmf_var=/usr/share/edk2/ovmf/OVMF_VARS.fd
+
 ovmf_vm="${vmdir}/OVMF_VARS.fd"
 
 uefi=${uefi:-yes}
@@ -411,12 +413,16 @@ guest_uid=${guest_uid:-1000}
 guest_gid=${guest_gid:-1000}
 
 viofs_bin=virtiofsd
+# Arch
 viofs_exec=/usr/lib/${viofs_bin}
+# Fedora
+[[ -x "${viofs_exec}" ]] || viofs_exec=/usr/libexec/${viofs_bin}
+
 viofs_sock=${vmdir}/${viofs_bin}.sock
 viofs_pidf=${viofs_sock}.pid
 viofs_pid=$([[ -f ${viofs_pidf} ]] && cat ${viofs_pidf})
 
-if [[ -n "${viofsdir}" && -d "${viofsdir}" && -f ${viofs_exec} ]]; then
+if [[ -n "${viofsdir}" && -d "${viofsdir}" && -x ${viofs_exec} ]]; then
     viofs_devices="-object memory-backend-memfd,id=mem,size=${mem},share=on"
     viofs_devices+=" -numa node,memdev=mem"
     viofs_devices+=" -chardev socket,id=viofsdev,path=${viofs_sock}"
@@ -430,7 +436,7 @@ is_pid_viofs() {
 init_viofs() {
     if [[ -n "${viofsdir}" ]]; then
         [[ -d "${viofsdir}" ]] || errf "dir not found: ${viofsdir}\n"
-        [[ -f "${viofs_exec}" ]] || errf "command not found: ${viofs_exec}\n"
+        [[ -x "${viofs_exec}" ]] || errf "command not found: ${viofs_exec}\n"
         if [[ -z "${viofs_pid}" ]] || [[ ! $(is_pid_viofs "${viofs_pid}") ]]; then
             host_uid=$(id -u)
             host_gid=$(id -g)
