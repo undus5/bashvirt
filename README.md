@@ -104,6 +104,6 @@ actions:
     usb-list                list attached devices
     -h, --help, help        help info
 device_id:
-    looks like "1d6b:0002", get from command \`lsusb\` from 'usbutils' package
+    looks like "1d6b:0002", get with command `lsusb` from 'usbutils' package
 ```
 
