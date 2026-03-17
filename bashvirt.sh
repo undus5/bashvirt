@@ -328,7 +328,7 @@ case "${nic}" in
         bridge_check brnat
         bridge_check brlan
         nic_devices="-nic bridge,br=brnat,model=${nic_model},mac=$(gen_mac brnat)"
-        nic_devices+=" -nic bridge,br=brnat,model=${nic_model},mac=$(gen_mac brlan)"
+        nic_devices+=" -nic bridge,br=brlan,model=${nic_model},mac=$(gen_mac brlan)"
         ;;
     none)
         nic_devices=""
