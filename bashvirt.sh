@@ -413,6 +413,7 @@ guest_uid=${guest_uid:-1000}
 guest_gid=${guest_gid:-1000}
 
 viofs_bin=virtiofsd
+viofs_tag=VIOFS
 # Arch
 viofs_exec=/usr/lib/${viofs_bin}
 # Fedora
@@ -426,7 +427,7 @@ if [[ -n "${viofsdir}" && -d "${viofsdir}" && -x ${viofs_exec} ]]; then
     viofs_devices="-object memory-backend-memfd,id=mem,size=${mem},share=on"
     viofs_devices+=" -numa node,memdev=mem"
     viofs_devices+=" -chardev socket,id=viofsdev,path=${viofs_sock}"
-    viofs_devices+=" -device vhost-user-fs-pci,chardev=viofsdev,tag=VirtIOFS"
+    viofs_devices+=" -device vhost-user-fs-pci,chardev=viofsdev,tag=${viofs_tag}"
 fi
 
 is_pid_viofs() {
