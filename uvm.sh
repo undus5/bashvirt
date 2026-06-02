@@ -2,12 +2,9 @@
 
 errf() { printf "${@}" >&2; exit 1; }
 
-# import ${qvmdir} variable
-which evars.sh &>/dev/null || errf "evars.sh not found\n"
-source $(which evars.sh)
-
 print_help() { errf "Usage: $(basename ${0}) <vmname> <a|d|l> [device_name]\n"; }
 
+qvmdir=~/v
 vmname=${1}
 action=${2}
 devname=${3}
