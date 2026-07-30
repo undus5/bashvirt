@@ -2,6 +2,10 @@
 
 A bash script for launching QEMU virtual machine, optimized for personal use.
 
+## Deprecated
+
+check new version written in lua [uvirt](https://github.com/undus5/uvirt)
+
 ## Features
 
 - Bridged network, host-only network
