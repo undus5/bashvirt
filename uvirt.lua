@@ -33,11 +33,11 @@ device_id:
    looks like '0853:0100', run 'lsusb' to get ('usbutils' package)
 ]]
 
-function print_help()
+function print_help ()
    io.write(help_info)
 end
 
-function dir_exists(path)
+function dir_exists (path)
    -- appending a trailing slash works across both Unix and Windows systems
    local ok, err, code = os.rename(path .. "/", path .. "/")
    if not ok then
@@ -50,7 +50,7 @@ function dir_exists(path)
    return true
 end
 
-function file_exists(path)
+function file_exists (path)
    local f = io.open(path, "r")
    if f then
       f:close()
@@ -60,7 +60,7 @@ function file_exists(path)
    end
 end
 
-function create_vm(vm_name)
+function create_vm (vm_name)
    if not vm_name then
       io.stderr:write("vm_name is undefined\n")
       os.exit(1)
@@ -78,7 +78,7 @@ function create_vm(vm_name)
    end
 end
 
-function list_running_vm()
+function list_running_vm ()
    local f = io.popen("pidof qemu-system-x86_64")
    local pids = f:read("l")
    f:close()
@@ -130,7 +130,7 @@ end
 
 require(vm_name)
 
-function log_write(str)
+function log_write (str)
    if not str then
       return false
    end
@@ -140,7 +140,7 @@ function log_write(str)
    f:close()
 end
 
-function out_write(str)
+function out_write (str)
    if not str then
       return false
    end
@@ -148,7 +148,7 @@ function out_write(str)
    io.stdout:write(str .. "\n")
 end
 
-function err_write(str)
+function err_write (str)
    if not str then
       return false
    end
@@ -167,7 +167,7 @@ pid_file = vm_dir .. "/qemu.pid"
 
 qemu_args = qemu_args .. " -pidfile " .. pid_file
 
-function is_pid_proc(pid, proc_name)
+function is_pid_proc (pid, proc_name)
    local cmdl = "ps -o command= -p %s | grep " .. proc_name
    local f = io.popen(string.format(cmdl, pid))
    local p = f:read("l")
@@ -179,7 +179,7 @@ function is_pid_proc(pid, proc_name)
    end
 end
 
-function qemu_pid()
+function qemu_pid ()
    local f = io.open(pid_file, "r")
    local pid
    if f then
@@ -201,7 +201,7 @@ monitor_sock = vm_dir .. "/monitor.sock"
 qemu_args = qemu_args .. " -monitor unix:%s,server,nowait"
 qemu_args = string.format(qemu_args, monitor_sock)
 
-function monitor_execute(cmd)
+function monitor_execute (cmd)
    local sock_exists = os.execute("test -S " .. monitor_sock)
    if sock_exists then
       local cmdl = "echo '%s' | socat - unix-connect:%s"
@@ -221,18 +221,18 @@ end
 
 sub_cmd = arg[2]
 
-function kill_vm()
+function kill_vm ()
    local pid = qemu_pid()
    if pid then
       os.execute("kill -9 " .. pid)
    end
 end
 
-function reset_vm()
+function reset_vm ()
    monitor_execute("system_reset")
 end
 
-function tty()
+function tty ()
    local num = arg[3]
    if not num or not num:match("^[1-7]$") then
       err_write("invalid tty number, require [1-7]")
@@ -240,11 +240,11 @@ function tty()
    monitor_execute("sendkey ctrl-alt-f" .. num)
 end
 
-function usb_list()
+function usb_list ()
    monitor_execute("info usb")
 end
 
-function split_usb_device_ids()
+function split_usb_device_ids ()
    local device_id = arg[3]
    if not device_id or not device_id:match("%w%w%w%w:%w%w%w%w") then
       err_write("invalid usb device_id, refer to help info")
@@ -256,7 +256,7 @@ function split_usb_device_ids()
    return ids
 end
 
-function usb_attach()
+function usb_attach ()
    local ids = split_usb_device_ids(device_id)
    local assigned_id = "usb" .. ids[1] .. ids[2]
    local cmdl = "device_add usb-host,vendorid=0x%s,productid=0x%s,id=%s"
@@ -264,7 +264,7 @@ function usb_attach()
    monitor_execute(cmdl)
 end
 
-function usb_detach()
+function usb_detach ()
    local ids = split_usb_device_ids(device_id)
    local assigned_id = "usb" .. ids[1] .. ids[2]
    monitor_execute("device_del " .. assigned_id)
@@ -420,7 +420,7 @@ if not nic_devices[nic_adapter] then
    err_write("invalid option: nic_adapter, require: [qemu|virtio]")
 end
 
-function mac_addr(s)
+function mac_addr (s)
    local f = io.popen(string.format("printf '%s' | sha256sum", vm_name .. s))
    local h = f:read("l")
    f:close()
@@ -579,7 +579,7 @@ if viofsd_args then
    qemu_args = qemu_args .. viofsd_args
 end
 
-function start_viofsd()
+function start_viofsd ()
    if not viofsdir then
       return false
    end
@@ -625,7 +625,7 @@ function start_viofsd()
    end
 end
 
--- function stop_viofsd()
+-- function stop_viofsd ()
 --    local pid, f
 --    if file_exists(viofsd_pidfile) then
 --       f = io.open(viofsd_pidfile, "r")
