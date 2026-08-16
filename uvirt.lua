@@ -15,7 +15,6 @@ require("init_configs")
 
 help_info = [[
 usage: uvirt.lua create <vm_name>
-       uvirt.lua <tpl|ls>
        uvirt.lua <vm_name> [sub_cmd] [args]
 options:
    create <vm_name>   create vm in ~/uvirt.d/
@@ -26,8 +25,8 @@ sub_cmd:
    kill               kill virtual machine
    reset              reset virtual machine
    tty [1-7]          send key combo ctrl-alt-f[1-7]
-   ul                 list attached devices
-   ua <device_id>     passthrough usb device
+   ul                 list attached usb devices
+   ua <device_id>     attach(passthrough) usb device
    ud <device_id>     detach usb device
 device_id:
    looks like '0853:0100', run 'lsusb' to get ('usbutils' package)
