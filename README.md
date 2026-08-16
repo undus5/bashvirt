@@ -41,6 +41,7 @@ options:
    help,--help,-h     help info
 sub_cmd:
    [empty]            boot virtual machine
+   dry                print qemu args instead of booting
    kill               kill virtual machine
    reset              reset virtual machine
    tty [1-7]          send key combo ctrl-alt-f[1-7]
