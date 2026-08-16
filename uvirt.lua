@@ -14,7 +14,7 @@ package.path = package.path .. string.format(";%s/?.lua", proj_dir)
 require("init_configs")
 
 help_info = [[
-usage: uvirt.lua <create> <vm_name>
+usage: uvirt.lua create <vm_name>
        uvirt.lua <tpl|ls>
        uvirt.lua <vm_name> [sub_cmd] [args]
 options:
