@@ -3,6 +3,8 @@
 home_dir = os.getenv("HOME")
 data_dir = home_dir .. "/uvirt.d"
 
+package.path = package.path .. string.format(";%s/?/init.lua", data_dir)
+
 self_path = debug.getinfo(1, "S").source:sub(2)
 f = io.popen("realpath " .. self_path)
 self_path = f:read("l")
@@ -116,8 +118,6 @@ end
 --------------------------------------------------------------------------------
 -- vm_name
 --------------------------------------------------------------------------------
-
-package.path = package.path .. string.format(";%s/?/init.lua", data_dir)
 
 vm_name = arg[1]
 vm_dir = data_dir .. "/" .. vm_name
